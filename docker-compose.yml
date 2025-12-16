@@ -1,0 +1,31 @@
+version: "3.8"
+
+services:
+
+  cassandra:
+    image: cassandra:3.11
+    container_name: cassandra
+    platform: linux/amd64
+    ports:
+      - "9042:9042"
+    environment:
+      CASSANDRA_CLUSTER_NAME: "WorkshopCluster"
+      CASSANDRA_DC: "dc1"
+      CASSANDRA_RACK: "rack1"
+    healthcheck:
+      test: ["CMD-SHELL", "cqlsh localhost 9042 || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 10
+
+  studio:
+    image: datastax/dse-studio:6.8.32
+    container_name: datastax-studio
+    platform: linux/amd64
+    ports:
+      - "9091:9091"
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    environment:
+      DS_LICENSE: accept
