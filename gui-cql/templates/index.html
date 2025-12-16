@@ -135,6 +135,98 @@
       color: #7f8c8d;
       font-style: italic;
     }
+    .query-actions {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+      flex-wrap: wrap;
+    }
+    .saved-queries {
+      margin-top: 15px;
+      padding-top: 15px;
+      border-top: 1px solid #ddd;
+    }
+    .saved-queries-list {
+      max-height: 200px;
+      overflow-y: auto;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      padding: 8px;
+      background: #f9f9f9;
+      margin-top: 8px;
+    }
+    .saved-query-item {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      padding: 6px 8px;
+      margin-bottom: 4px;
+      background: white;
+      border: 1px solid #ddd;
+      border-radius: 3px;
+      cursor: pointer;
+    }
+    .saved-query-item:hover {
+      background: #f0f0f0;
+    }
+    .saved-query-item.active {
+      background: #e3f2fd;
+      border-color: #3498db;
+    }
+    .saved-query-name {
+      flex: 1;
+      font-weight: bold;
+      font-size: 13px;
+    }
+    .saved-query-preview {
+      flex: 2;
+      font-size: 12px;
+      color: #666;
+      margin: 0 10px;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+    .saved-query-actions {
+      display: flex;
+      gap: 5px;
+    }
+    .btn-small {
+      padding: 4px 8px;
+      font-size: 12px;
+    }
+    .btn-danger {
+      background: #e74c3c;
+    }
+    .btn-danger:hover {
+      background: #c0392b;
+    }
+    .batch-result {
+      margin-bottom: 15px;
+      padding: 10px;
+      border: 1px solid #ddd;
+      border-radius: 4px;
+      background: #f9f9f9;
+    }
+    .batch-result-header {
+      font-weight: bold;
+      margin-bottom: 8px;
+      color: #2d3e50;
+    }
+    .batch-result.success {
+      border-left: 4px solid #27ae60;
+    }
+    .batch-result.error {
+      border-left: 4px solid #e74c3c;
+    }
+    .query-input-group {
+      display: flex;
+      gap: 10px;
+      margin-bottom: 10px;
+    }
+    .query-input-group input {
+      flex: 1;
+    }
   </style>
 </head>
 <body>
@@ -180,16 +272,29 @@
 
   <div id="tab-editor" class="tab-content" style="display: none;">
     <section class="editor-container">
-      <label for="cql">Requête CQL :</label>
-      <textarea id="cql" placeholder="Exemple : SELECT * FROM system.local;"></textarea>
-      <button id="runBtn">Exécuter</button>
+      <label for="cql">Requête(s) CQL (séparées par des points-virgules) :</label>
+      <textarea id="cql" placeholder="Exemple : SELECT * FROM system.local;&#10;SELECT * FROM system.peers;"></textarea>
+      <div class="query-actions">
+        <button id="runBtn">Exécuter</button>
+        <div class="query-input-group">
+          <input type="text" id="queryName" placeholder="Nom de la requête..." />
+          <button id="saveQueryBtn" class="btn-secondary btn-small">Sauvegarder</button>
+        </div>
+      </div>
       <div id="status" class="status"></div>
+    </section>
+
+    <section class="saved-queries">
+      <h3>Requêtes sauvegardées</h3>
+      <div id="savedQueriesList" class="saved-queries-list">
+        <div class="results-empty">Aucune requête sauvegardée.</div>
+      </div>
     </section>
 
     <section>
       <h2>Résultats</h2>
       <div id="results" class="results-container">
-        <div class="results-empty">Aucun résultat pour l’instant.</div>
+        <div class="results-empty">Aucun résultat pour l'instant.</div>
       </div>
     </section>
   </div>
@@ -227,6 +332,119 @@
   const cqlTextarea = document.getElementById('cql');
   const statusDiv = document.getElementById('status');
   const resultsDiv = document.getElementById('results');
+  const saveQueryBtn = document.getElementById('saveQueryBtn');
+  const queryNameInput = document.getElementById('queryName');
+  const savedQueriesList = document.getElementById('savedQueriesList');
+
+  // Gestion des requêtes sauvegardées
+  const STORAGE_KEY = 'cql_saved_queries';
+
+  function getSavedQueries() {
+    try {
+      const stored = localStorage.getItem(STORAGE_KEY);
+      return stored ? JSON.parse(stored) : {};
+    } catch (e) {
+      return {};
+    }
+  }
+
+  function saveQueries(queries) {
+    try {
+      localStorage.setItem(STORAGE_KEY, JSON.stringify(queries));
+    } catch (e) {
+      console.error('Erreur lors de la sauvegarde:', e);
+    }
+  }
+
+  function loadSavedQueries() {
+    const queries = getSavedQueries();
+    const keys = Object.keys(queries);
+    
+    if (keys.length === 0) {
+      savedQueriesList.innerHTML = '<div class="results-empty">Aucune requête sauvegardée.</div>';
+      return;
+    }
+
+    let html = '';
+    for (const name of keys.sort()) {
+      const query = queries[name];
+      const preview = query.length > 50 ? query.substring(0, 50) + '...' : query;
+      html += `
+        <div class="saved-query-item" data-name="${name}">
+          <div class="saved-query-name">${name}</div>
+          <div class="saved-query-preview">${preview.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
+          <div class="saved-query-actions">
+            <button class="btn-secondary btn-small load-query-btn" data-name="${name}">Charger</button>
+            <button class="btn-danger btn-small delete-query-btn" data-name="${name}">Supprimer</button>
+          </div>
+        </div>
+      `;
+    }
+    savedQueriesList.innerHTML = html;
+
+    // Ajouter les event listeners
+    document.querySelectorAll('.load-query-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const name = e.target.getAttribute('data-name');
+        loadQuery(name);
+      });
+    });
+
+    document.querySelectorAll('.delete-query-btn').forEach(btn => {
+      btn.addEventListener('click', (e) => {
+        const name = e.target.getAttribute('data-name');
+        deleteQuery(name);
+      });
+    });
+  }
+
+  function saveQuery() {
+    const query = cqlTextarea.value.trim();
+    const name = queryNameInput.value.trim();
+
+    if (!query) {
+      alert('Veuillez saisir une requête à sauvegarder.');
+      return;
+    }
+
+    if (!name) {
+      alert('Veuillez donner un nom à cette requête.');
+      return;
+    }
+
+    const queries = getSavedQueries();
+    queries[name] = query;
+    saveQueries(queries);
+    loadSavedQueries();
+    queryNameInput.value = '';
+    
+    statusDiv.textContent = `Requête "${name}" sauvegardée.`;
+    statusDiv.className = 'status success';
+  }
+
+  function loadQuery(name) {
+    const queries = getSavedQueries();
+    if (queries[name]) {
+      cqlTextarea.value = queries[name];
+      queryNameInput.value = name;
+      statusDiv.textContent = `Requête "${name}" chargée.`;
+      statusDiv.className = 'status success';
+    }
+  }
+
+  function deleteQuery(name) {
+    if (!confirm(`Supprimer la requête "${name}" ?`)) {
+      return;
+    }
+
+    const queries = getSavedQueries();
+    delete queries[name];
+    saveQueries(queries);
+    loadSavedQueries();
+    
+    statusDiv.textContent = `Requête "${name}" supprimée.`;
+    statusDiv.className = 'status info';
+  }
 
   async function loadConfig() {
     try {
@@ -308,16 +526,57 @@
         const err = await response.json().catch(() => ({}));
         statusDiv.textContent = 'Erreur : ' + (err.detail || 'inconnue');
         statusDiv.classList.add('error');
-        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l’exécution.</div>';
+        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
         return;
       }
 
       const data = await response.json();
 
+      if (!data.success && data.type !== 'batch') {
+        statusDiv.textContent = 'Erreur : ' + (data.error || 'inconnue');
+        statusDiv.classList.add('error');
+        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
+        return;
+      }
+
+      // Gestion des résultats batch (plusieurs requêtes)
+      if (data.type === 'batch') {
+        statusDiv.textContent = `Exécution terminée : ${data.successful} réussie(s), ${data.failed} échouée(s) sur ${data.total_queries} requête(s).`;
+        statusDiv.className = data.failed === 0 ? 'status success' : 'status error';
+        
+        let html = '';
+        html += `<div class="batch-result-header">Résultats de ${data.total_queries} requête(s)</div>`;
+        
+        // Afficher les résultats réussis
+        for (const result of data.results) {
+          html += `<div class="batch-result success">`;
+          html += `<div class="batch-result-header">Requête ${result.query_index}: ${result.query}</div>`;
+          if (result.type === 'select') {
+            html += `<div>${result.row_count} ligne(s) retournée(s)</div>`;
+            html += renderTableHTML(result.columns, result.rows);
+          } else {
+            html += `<div>${result.message || 'OK'}</div>`;
+          }
+          html += `</div>`;
+        }
+        
+        // Afficher les erreurs
+        for (const error of data.errors) {
+          html += `<div class="batch-result error">`;
+          html += `<div class="batch-result-header">Requête ${error.query_index}: ${error.query}</div>`;
+          html += `<div style="color: #e74c3c;">Erreur : ${error.error}</div>`;
+          html += `</div>`;
+        }
+        
+        resultsDiv.innerHTML = html;
+        return;
+      }
+
+      // Gestion d'une seule requête (comportement original)
       if (!data.success) {
         statusDiv.textContent = 'Erreur : ' + (data.error || 'inconnue');
         statusDiv.classList.add('error');
-        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l’exécution.</div>';
+        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
         return;
       }
 
@@ -344,6 +603,14 @@
       return;
     }
 
+    resultsDiv.innerHTML = renderTableHTML(columns, rows);
+  }
+
+  function renderTableHTML(columns, rows) {
+    if (!rows || rows.length === 0) {
+      return '<div class="results-empty">Aucune ligne retournée.</div>';
+    }
+
     let html = '<table><thead><tr>';
     for (const col of columns) {
       html += `<th>${col}</th>`;
@@ -359,17 +626,20 @@
         } else if (typeof value === 'object') {
           value = JSON.stringify(value);
         }
+        // Échapper les caractères HTML pour la sécurité
+        value = String(value).replace(/</g, '&lt;').replace(/>/g, '&gt;');
         html += `<td>${value}</td>`;
       }
       html += '</tr>';
     }
 
     html += '</tbody></table>';
-    resultsDiv.innerHTML = html;
+    return html;
   }
 
   saveConfigBtn.addEventListener('click', saveConfig);
   runBtn.addEventListener('click', executeQuery);
+  saveQueryBtn.addEventListener('click', saveQuery);
   cqlTextarea.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
       executeQuery();
@@ -377,6 +647,7 @@
   });
 
   loadConfig();
+  loadSavedQueries();
 </script>
 </body>
 </html>

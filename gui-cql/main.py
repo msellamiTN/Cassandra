@@ -146,6 +146,45 @@ async def update_config(payload: ConfigRequest):
         raise HTTPException(status_code=400, detail=f"Erreur de connexion : {str(e)}")
 
 
+def split_queries(query_text: str) -> List[str]:
+    """Sépare le texte en plusieurs requêtes CQL en respectant les points-virgules."""
+    queries = []
+    current_query = []
+    in_string = False
+    string_char = None
+    i = 0
+    
+    while i < len(query_text):
+        char = query_text[i]
+        
+        # Gestion des chaînes de caractères
+        if char in ("'", '"') and (i == 0 or query_text[i-1] != '\\'):
+            if not in_string:
+                in_string = True
+                string_char = char
+            elif char == string_char:
+                in_string = False
+                string_char = None
+            current_query.append(char)
+        elif char == ';' and not in_string:
+            # Fin d'une requête
+            query_str = ''.join(current_query).strip()
+            if query_str:
+                queries.append(query_str)
+            current_query = []
+        else:
+            current_query.append(char)
+        i += 1
+    
+    # Ajouter la dernière requête si elle n'a pas de point-virgule final
+    if current_query:
+        query_str = ''.join(current_query).strip()
+        if query_str:
+            queries.append(query_str)
+    
+    return queries
+
+
 @app.post("/execute")
 async def execute_cql(payload: CqlRequest):
     if not payload.query.strip():
@@ -154,27 +193,74 @@ async def execute_cql(payload: CqlRequest):
     if not session or session.is_shutdown:
         raise HTTPException(status_code=503, detail="Pas de connexion active à Cassandra. Veuillez configurer le cluster d'abord.")
 
-    try:
-        result = session.execute(payload.query)
-
-        if result.column_names:
-            rows: List[Dict[str, Any]] = [dict(row._asdict()) for row in result]
-            return {
-                "success": True,
-                "type": "select",
-                "columns": result.column_names,
-                "rows": rows,
-            }
-        else:
-            return {
-                "success": True,
-                "type": "other",
-                "message": "Requête exécutée avec succès.",
-            }
-    except Exception as e:
+    # Détecter si plusieurs requêtes sont présentes
+    queries = split_queries(payload.query)
+    
+    if len(queries) > 1:
+        # Exécution de plusieurs requêtes
+        results = []
+        errors = []
+        
+        for idx, query in enumerate(queries, 1):
+            try:
+                result = session.execute(query)
+                
+                if result.column_names:
+                    rows: List[Dict[str, Any]] = [dict(row._asdict()) for row in result]
+                    results.append({
+                        "query_index": idx,
+                        "query": query[:100] + "..." if len(query) > 100 else query,
+                        "type": "select",
+                        "columns": result.column_names,
+                        "rows": rows,
+                        "row_count": len(rows),
+                    })
+                else:
+                    results.append({
+                        "query_index": idx,
+                        "query": query[:100] + "..." if len(query) > 100 else query,
+                        "type": "other",
+                        "message": "Requête exécutée avec succès.",
+                    })
+            except Exception as e:
+                errors.append({
+                    "query_index": idx,
+                    "query": query[:100] + "..." if len(query) > 100 else query,
+                    "error": str(e),
+                })
+        
         return {
-            "success": False,
-            "error": str(e),
+            "success": len(errors) == 0,
+            "type": "batch",
+            "total_queries": len(queries),
+            "successful": len(results),
+            "failed": len(errors),
+            "results": results,
+            "errors": errors,
         }
+    else:
+        # Exécution d'une seule requête (comportement original)
+        try:
+            result = session.execute(queries[0] if queries else payload.query)
+
+            if result.column_names:
+                rows: List[Dict[str, Any]] = [dict(row._asdict()) for row in result]
+                return {
+                    "success": True,
+                    "type": "select",
+                    "columns": result.column_names,
+                    "rows": rows,
+                }
+            else:
+                return {
+                    "success": True,
+                    "type": "other",
+                    "message": "Requête exécutée avec succès.",
+                }
+        except Exception as e:
+            return {
+                "success": False,
+                "error": str(e),
+            }
 
 
