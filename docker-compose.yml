@@ -38,7 +38,7 @@ services:
           - cassandra-db
 
   cql-gui:
-    build: ./CQL-gui
+    build: ./gui-cql
     container_name: cql-gui-app
     hostname: cql-gui-app
     platform: linux/amd64
