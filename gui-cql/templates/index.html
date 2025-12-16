@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8" />
   <title>Cassandra CQL Web Editor</title>
+  <!-- Font Awesome Icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css" />
   <!-- CodeMirror CSS -->
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css" />
   <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css" />
@@ -407,6 +409,54 @@
       color: #1b6fbf;
       margin-left: 6px;
     }
+    /* Icônes */
+    .icon {
+      margin-right: 6px;
+      width: 14px;
+      text-align: center;
+      display: inline-block;
+    }
+    .icon-success {
+      color: #27ae60;
+    }
+    .icon-error {
+      color: #e74c3c;
+    }
+    .icon-info {
+      color: #3498db;
+    }
+    .icon-warning {
+      color: #f39c12;
+    }
+    /* Import file button */
+    .file-input-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+    .file-input-wrapper input[type="file"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
+    .file-input-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: #3498db;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 13px;
+      transition: background 0.2s;
+    }
+    .file-input-label:hover {
+      background: #2980b9;
+    }
+    .file-input-label i {
+      font-size: 12px;
+    }
   </style>
   <!-- CodeMirror JavaScript -->
   <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
@@ -473,11 +523,17 @@
           </div>
           <div id="queryPreview" class="status info" style="display: none; margin-top: 5px; font-size: 12px; font-style: italic;"></div>
           <div class="query-actions">
-            <button id="runBtn">Exécuter (sélection/cursor)</button>
-            <button id="runAllBtn" class="btn-secondary">Exécuter tout</button>
+            <button id="runBtn"><i class="fas fa-play icon"></i>Exécuter (sélection/cursor)</button>
+            <button id="runAllBtn" class="btn-secondary"><i class="fas fa-forward icon"></i>Exécuter tout</button>
+            <div class="file-input-wrapper">
+              <input type="file" id="importFile" accept=".cql,.sql,.txt" />
+              <label for="importFile" class="file-input-label">
+                <i class="fas fa-file-import"></i>Importer CQL
+              </label>
+            </div>
             <div class="query-input-group">
               <input type="text" id="queryName" placeholder="Nom de la requête..." />
-              <button id="saveQueryBtn" class="btn-secondary btn-small">Sauvegarder</button>
+              <button id="saveQueryBtn" class="btn-secondary btn-small"><i class="fas fa-save icon"></i>Sauvegarder</button>
             </div>
           </div>
           <div id="status" class="status"></div>
@@ -501,36 +557,36 @@
       <aside class="sidebar">
         <div class="sidebar-section">
           <div class="sidebar-header">
-            <h3>Statut serveur</h3>
-            <button id="refreshStatusBtn" class="btn-secondary btn-small">Rafraîchir</button>
+            <h3><i class="fas fa-server icon"></i>Statut serveur</h3>
+            <button id="refreshStatusBtn" class="btn-secondary btn-small"><i class="fas fa-sync-alt icon"></i>Rafraîchir</button>
           </div>
-          <div id="serverStatus" class="sidebar-body meta-empty">Non connecté.</div>
+          <div id="serverStatus" class="sidebar-body meta-empty"><i class="fas fa-times-circle icon icon-error"></i>Non connecté.</div>
         </div>
 
         <div class="sidebar-section">
           <div class="sidebar-header">
-            <h3>Keyspaces</h3>
-            <button id="refreshMetaBtn" class="btn-secondary btn-small">Rafraîchir</button>
+            <h3><i class="fas fa-database icon"></i>Keyspaces</h3>
+            <button id="refreshMetaBtn" class="btn-secondary btn-small"><i class="fas fa-sync-alt icon"></i>Rafraîchir</button>
           </div>
           <div id="keyspaceList" class="meta-list">
-            <div class="meta-empty">Aucun keyspace chargé.</div>
+            <div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucun keyspace chargé.</div>
           </div>
         </div>
 
         <div class="sidebar-section">
           <div class="sidebar-header">
-            <h3>Tables</h3>
+            <h3><i class="fas fa-table icon"></i>Tables</h3>
           </div>
           <div id="tableList" class="meta-list">
-            <div class="meta-empty">Aucune table.</div>
+            <div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucune table.</div>
           </div>
         </div>
 
         <div class="sidebar-section">
           <div class="sidebar-header">
-            <h3>Détails</h3>
+            <h3><i class="fas fa-info-circle icon"></i>Détails</h3>
           </div>
-          <div id="tableDetails" class="sidebar-body meta-empty">Sélectionnez une table.</div>
+          <div id="tableDetails" class="sidebar-body meta-empty"><i class="fas fa-mouse-pointer icon"></i>Sélectionnez une table.</div>
         </div>
       </aside>
     </div>
@@ -698,27 +754,28 @@
   // ---- Métadonnées (statut, keyspaces, tables) ----
   function renderServerStatus(data) {
     if (!data || !data.connected) {
-      serverStatusDiv.innerHTML = '<div class="meta-empty">Non connecté.</div>';
+      serverStatusDiv.innerHTML = '<div class="meta-empty"><i class="fas fa-times-circle icon icon-error"></i>Non connecté.</div>';
       return;
     }
     const hosts = (data.hosts || []).join(', ');
     serverStatusDiv.innerHTML = `
-      <div><strong>Cluster :</strong> ${data.cluster_name || 'N/A'}</div>
-      <div><strong>Hôtes :</strong> ${hosts || 'N/A'}</div>
-      <div><strong>Keyspace courant :</strong> ${data.keyspace || 'non défini'}</div>
+      <div><i class="fas fa-check-circle icon icon-success"></i><strong>Connecté</strong></div>
+      <div style="margin-top: 6px;"><i class="fas fa-network-wired icon icon-info"></i><strong>Cluster :</strong> ${data.cluster_name || 'N/A'}</div>
+      <div><i class="fas fa-server icon icon-info"></i><strong>Hôtes :</strong> ${hosts || 'N/A'}</div>
+      <div><i class="fas fa-database icon icon-info"></i><strong>Keyspace courant :</strong> ${data.keyspace || 'non défini'}</div>
     `;
   }
 
   function renderKeyspaces(list) {
     if (!list || list.length === 0) {
-      keyspaceListDiv.innerHTML = '<div class="meta-empty">Aucun keyspace.</div>';
+      keyspaceListDiv.innerHTML = '<div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucun keyspace.</div>';
       return;
     }
     keyspaceListDiv.innerHTML = '';
     list.forEach((ks) => {
       const div = document.createElement('div');
       div.className = 'meta-item' + (ks === selectedKeyspace ? ' active' : '');
-      div.textContent = ks;
+      div.innerHTML = `<i class="fas fa-database icon"></i><span>${ks}</span>`;
       div.addEventListener('click', () => loadTables(ks));
       keyspaceListDiv.appendChild(div);
     });
@@ -726,8 +783,8 @@
 
   function renderTables(tables) {
     if (!tables || tables.length === 0) {
-      tableListDiv.innerHTML = '<div class="meta-empty">Aucune table.</div>';
-      tableDetailsDiv.innerHTML = 'Sélectionnez une table.';
+      tableListDiv.innerHTML = '<div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucune table.</div>';
+      tableDetailsDiv.innerHTML = '<i class="fas fa-mouse-pointer icon"></i>Sélectionnez une table.';
       selectedTable = null;
       return;
     }
@@ -736,8 +793,8 @@
       const div = document.createElement('div');
       div.className = 'meta-item' + (table.name === selectedTable ? ' active' : '');
       div.innerHTML = `
-        <div class="meta-item-title">${table.name}</div>
-        <div class="meta-item-sub">${table.columns.length} colonne(s)</div>
+        <div class="meta-item-title"><i class="fas fa-table icon"></i>${table.name}</div>
+        <div class="meta-item-sub"><i class="fas fa-columns icon"></i>${table.columns.length} colonne(s)</div>
       `;
       div.addEventListener('click', () => renderTableDetails(table));
       tableListDiv.appendChild(div);
@@ -746,7 +803,7 @@
 
   function renderTableDetails(table) {
     if (!table) {
-      tableDetailsDiv.innerHTML = 'Sélectionnez une table.';
+      tableDetailsDiv.innerHTML = '<i class="fas fa-mouse-pointer icon"></i>Sélectionnez une table.';
       return;
     }
     selectedTable = table.name;
@@ -754,18 +811,23 @@
     const ck = table.clustering_keys?.join(', ') || 'Aucune';
     let cols = '';
     table.columns.forEach((c) => {
-      cols += `<div><strong>${c.name}</strong> : ${c.type}</div>`;
+      const isPK = table.partition_keys?.includes(c.name);
+      const isCK = table.clustering_keys?.includes(c.name);
+      let icon = '<i class="fas fa-columns icon"></i>';
+      if (isPK) icon = '<i class="fas fa-key icon icon-success"></i>';
+      else if (isCK) icon = '<i class="fas fa-sort icon icon-info"></i>';
+      cols += `<div style="margin-bottom: 4px;">${icon}<strong>${c.name}</strong> : <code>${c.type}</code></div>`;
     });
     tableDetailsDiv.innerHTML = `
-      <div><strong>Table :</strong> ${table.name}</div>
-      <div><strong>Partition key :</strong> ${pk}</div>
-      <div><strong>Clustering :</strong> ${ck}</div>
-      <div style="margin-top:6px;"><strong>Colonnes :</strong></div>
-      <div style="margin-top:4px;">${cols || 'Aucune colonne'}</div>
+      <div style="margin-bottom: 8px;"><i class="fas fa-table icon icon-info"></i><strong>Table :</strong> ${table.name}</div>
+      <div style="margin-bottom: 4px;"><i class="fas fa-key icon icon-success"></i><strong>Partition key :</strong> ${pk}</div>
+      <div style="margin-bottom: 8px;"><i class="fas fa-sort icon icon-info"></i><strong>Clustering :</strong> ${ck}</div>
+      <div style="margin-top:8px; margin-bottom:4px;"><strong><i class="fas fa-list icon"></i>Colonnes :</strong></div>
+      <div style="margin-top:4px;">${cols || '<div class="meta-empty">Aucune colonne</div>'}</div>
     `;
     document.querySelectorAll('#tableList .meta-item').forEach((el) => {
       const nameEl = el.querySelector('.meta-item-title');
-      el.classList.toggle('active', nameEl && nameEl.textContent === table.name);
+      el.classList.toggle('active', nameEl && nameEl.textContent && nameEl.textContent.includes(table.name));
     });
   }
 
@@ -853,11 +915,11 @@
       const preview = query.length > 50 ? query.substring(0, 50) + '...' : query;
       html += `
         <div class="saved-query-item" data-name="${name}">
-          <div class="saved-query-name">${name}</div>
+          <div class="saved-query-name"><i class="fas fa-file-code icon"></i>${name}</div>
           <div class="saved-query-preview">${preview.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
           <div class="saved-query-actions">
-            <button class="btn-secondary btn-small load-query-btn" data-name="${name}">Charger</button>
-            <button class="btn-danger btn-small delete-query-btn" data-name="${name}">Supprimer</button>
+            <button class="btn-secondary btn-small load-query-btn" data-name="${name}"><i class="fas fa-upload icon"></i>Charger</button>
+            <button class="btn-danger btn-small delete-query-btn" data-name="${name}"><i class="fas fa-trash icon"></i>Supprimer</button>
           </div>
         </div>
       `;
@@ -867,15 +929,15 @@
     // Ajouter les event listeners
     document.querySelectorAll('.load-query-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const name = e.target.getAttribute('data-name');
-        loadQuery(name);
+        const name = btn.getAttribute('data-name') || e.target.closest('.load-query-btn')?.getAttribute('data-name');
+        if (name) loadQuery(name);
       });
     });
 
     document.querySelectorAll('.delete-query-btn').forEach(btn => {
       btn.addEventListener('click', (e) => {
-        const name = e.target.getAttribute('data-name');
-        deleteQuery(name);
+        const name = btn.getAttribute('data-name') || e.target.closest('.delete-query-btn')?.getAttribute('data-name');
+        if (name) deleteQuery(name);
       });
     });
   }
@@ -1345,6 +1407,36 @@
       resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
     }
   }
+
+  // Fonction d'import de fichier CQL
+  const importFileInput = document.getElementById('importFile');
+  
+  importFileInput.addEventListener('change', function(e) {
+    const file = e.target.files[0];
+    if (!file) return;
+    
+    const reader = new FileReader();
+    reader.onload = function(event) {
+      const content = event.target.result;
+      setEditorValue(content);
+      if (codeEditor) {
+        codeEditor.refresh();
+      }
+      statusDiv.textContent = `Fichier "${file.name}" importé avec succès.`;
+      statusDiv.className = 'status success';
+      
+      // Réinitialiser l'input pour permettre de réimporter le même fichier
+      importFileInput.value = '';
+    };
+    
+    reader.onerror = function() {
+      statusDiv.textContent = 'Erreur lors de la lecture du fichier.';
+      statusDiv.className = 'status error';
+      importFileInput.value = '';
+    };
+    
+    reader.readAsText(file);
+  });
 
   saveConfigBtn.addEventListener('click', saveConfig);
   runBtn.addEventListener('click', executeQuery);
