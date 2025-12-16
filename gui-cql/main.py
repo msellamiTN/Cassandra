@@ -45,6 +45,10 @@ cluster: Cluster | None = None
 session = None
 
 
+def is_session_active() -> bool:
+    return session is not None and not session.is_shutdown
+
+
 @app.on_event("startup")
 def on_startup() -> None:
     global cluster, session
@@ -120,13 +124,12 @@ def reconnect_cassandra(hosts: str, port: int, username: str = "", password: str
 @app.get("/api/config")
 async def get_config():
     """Retourne la configuration actuelle et l'état de connexion."""
-    global cluster, session
     return {
         "hosts": ",".join(CASSANDRA_CONTACT_POINTS),
         "port": CASSANDRA_PORT,
         "username": CASSANDRA_USER,
         "keyspace": CASSANDRA_KEYSPACE,
-        "connected": session is not None and not session.is_shutdown if session else False,
+        "connected": is_session_active(),
     }
 
 
@@ -144,6 +147,78 @@ async def update_config(payload: ConfigRequest):
         return {"message": "Connexion réussie au cluster Cassandra."}
     except Exception as e:
         raise HTTPException(status_code=400, detail=f"Erreur de connexion : {str(e)}")
+
+
+@app.get("/api/status")
+async def get_status():
+    """Renvoie l'état du cluster et quelques métadonnées."""
+    if not is_session_active():
+        return {"connected": False}
+
+    try:
+        metadata = cluster.metadata if cluster else None
+        return {
+            "connected": True,
+            "cluster_name": metadata.cluster_name if metadata else None,
+            "hosts": [h.address for h in (cluster.metadata.all_hosts() if cluster else [])],
+            "keyspace": session.keyspace if session else None,
+        }
+    except Exception as exc:
+        return {"connected": False, "error": str(exc)}
+
+
+@app.get("/api/keyspaces")
+async def list_keyspaces():
+    """Liste les keyspaces disponibles."""
+    if not is_session_active():
+        raise HTTPException(status_code=503, detail="Pas de connexion active à Cassandra.")
+
+    try:
+        return {
+            "success": True,
+            "keyspaces": sorted(cluster.metadata.keyspaces.keys()),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Impossible de lister les keyspaces : {exc}")
+
+
+@app.get("/api/keyspaces/{keyspace}/tables")
+async def list_tables(keyspace: str):
+    """Liste les tables d'un keyspace et leurs métadonnées principales."""
+    if not is_session_active():
+        raise HTTPException(status_code=503, detail="Pas de connexion active à Cassandra.")
+
+    try:
+        ks_meta = cluster.metadata.keyspaces.get(keyspace)
+        if not ks_meta:
+            raise HTTPException(status_code=404, detail=f"Keyspace '{keyspace}' introuvable.")
+
+        tables_info: List[Dict[str, Any]] = []
+        for table_name, table_meta in ks_meta.tables.items():
+            columns = [
+                {"name": col_name, "type": str(col_meta.cql_type)}
+                for col_name, col_meta in table_meta.columns.items()
+            ]
+            partition_keys = [col.name for col in table_meta.partition_key]
+            clustering_keys = [col.name for col in table_meta.clustering_key]
+            tables_info.append(
+                {
+                    "name": table_name,
+                    "columns": columns,
+                    "partition_keys": partition_keys,
+                    "clustering_keys": clustering_keys,
+                }
+            )
+
+        return {
+            "success": True,
+            "keyspace": keyspace,
+            "tables": sorted(tables_info, key=lambda t: t["name"]),
+        }
+    except HTTPException:
+        raise
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Impossible de lister les tables : {exc}")
 
 
 def remove_comments(query_text: str) -> str:
