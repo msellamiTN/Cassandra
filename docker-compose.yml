@@ -1,48 +1,60 @@
-version: "3.8"
+version: "3.9"
 
 networks:
   cassandra-net:
     driver: bridge
-    name: cassandra-bridge   # Nom explicite du bridge Docker
+    name: cassandra-bridge
+    ipam:
+      config:
+        - subnet: 172.20.0.0/16
 
 services:
-
   cassandra:
-    image: cassandra:3.11
-    container_name: cassandra
+    image: cassandra:4.1
+    container_name: cql-gui-cassandra
     hostname: cassandra-node
     platform: linux/amd64
     ports:
       - "9042:9042"
     environment:
-      CASSANDRA_CLUSTER_NAME: "WorkshopCluster"
-      CASSANDRA_DC: "dc1"
-      CASSANDRA_RACK: "rack1"
+      - CASSANDRA_START_RPC=true
+      - CASSANDRA_CLUSTER_NAME=CqlGuiCluster
+      - CASSANDRA_DC=dc1
+      - CASSANDRA_RACK=rack1
+      - CASSANDRA_NUM_TOKENS=8
+      - MAX_HEAP_SIZE=512M
+      - HEAP_NEWSIZE=128M
     healthcheck:
       test: ["CMD-SHELL", "cqlsh cassandra-node 9042 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 10
+    volumes:
+      - cassandra_data:/var/lib/cassandra
     networks:
       cassandra-net:
         aliases:
           - cassandra
           - cassandra-db
 
-  studio:
-    image: datastax/dse-studio:6.8.32
-    container_name: datastax-studio
-    hostname: datastax-studio
+  cql-gui:
+    build: ./CQL-gui
+    container_name: cql-gui-app
+    hostname: cql-gui-app
     platform: linux/amd64
-    ports:
-      - "9091:9091"
     depends_on:
       cassandra:
         condition: service_healthy
     environment:
-      DS_LICENSE: accept
+      - CASSANDRA_HOSTS=cassandra
+      - CASSANDRA_PORT=9042
+      # - CASSANDRA_KEYSPACE=mon_keyspace
+      # - CASSANDRA_USER=username
+      # - CASSANDRA_PASSWORD=password
+    ports:
+      - "8000:8000"
     networks:
-      cassandra-net:
-        aliases:
-          - studio
-          - datastax-studio
+      - cassandra-net
+
+volumes:
+  cassandra_data:
