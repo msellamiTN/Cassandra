@@ -4,9 +4,6 @@ networks:
   cassandra-net:
     driver: bridge
     name: cassandra-bridge
-    ipam:
-      config:
-        - subnet: 172.20.0.0/16
 
 services:
   cassandra:
