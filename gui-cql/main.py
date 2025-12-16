@@ -33,6 +33,14 @@ class CqlRequest(BaseModel):
     query: str
 
 
+class ConfigRequest(BaseModel):
+    hosts: str
+    port: int
+    username: str = ""
+    password: str = ""
+    keyspace: str = ""
+
+
 cluster: Cluster | None = None
 session = None
 
@@ -79,10 +87,72 @@ async def index(request: Request):
     )
 
 
+def reconnect_cassandra(hosts: str, port: int, username: str = "", password: str = "", keyspace: str = "") -> None:
+    """Ferme la connexion existante et se reconnecte avec les nouveaux paramètres."""
+    global cluster, session
+    
+    if session:
+        try:
+            session.shutdown()
+        except:
+            pass
+    if cluster:
+        try:
+            cluster.shutdown()
+        except:
+            pass
+    
+    contact_points = [h.strip() for h in hosts.split(",") if h.strip()]
+    if not contact_points:
+        raise ValueError("Au moins un hôte doit être spécifié.")
+    
+    if username and password:
+        auth = PlainTextAuthProvider(username=username, password=password)
+        cluster = Cluster(contact_points=contact_points, port=port, auth_provider=auth)
+    else:
+        cluster = Cluster(contact_points=contact_points, port=port)
+    
+    session = cluster.connect()
+    if keyspace:
+        session.set_keyspace(keyspace)
+
+
+@app.get("/api/config")
+async def get_config():
+    """Retourne la configuration actuelle et l'état de connexion."""
+    global cluster, session
+    return {
+        "hosts": ",".join(CASSANDRA_CONTACT_POINTS),
+        "port": CASSANDRA_PORT,
+        "username": CASSANDRA_USER,
+        "keyspace": CASSANDRA_KEYSPACE,
+        "connected": session is not None and not session.is_shutdown if session else False,
+    }
+
+
+@app.post("/api/config")
+async def update_config(payload: ConfigRequest):
+    """Met à jour la configuration et teste la connexion."""
+    try:
+        reconnect_cassandra(
+            hosts=payload.hosts,
+            port=payload.port,
+            username=payload.username,
+            password=payload.password,
+            keyspace=payload.keyspace,
+        )
+        return {"message": "Connexion réussie au cluster Cassandra."}
+    except Exception as e:
+        raise HTTPException(status_code=400, detail=f"Erreur de connexion : {str(e)}")
+
+
 @app.post("/execute")
 async def execute_cql(payload: CqlRequest):
     if not payload.query.strip():
         raise HTTPException(status_code=400, detail="La requête CQL est vide.")
+
+    if not session or session.is_shutdown:
+        raise HTTPException(status_code=503, detail="Pas de connexion active à Cassandra. Veuillez configurer le cluster d'abord.")
 
     try:
         result = session.execute(payload.query)
