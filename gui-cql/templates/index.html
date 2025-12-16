@@ -3,6 +3,9 @@
 <head>
   <meta charset="UTF-8" />
   <title>Cassandra CQL Web Editor</title>
+  <!-- CodeMirror CSS -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.css" />
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/theme/monokai.min.css" />
   <style>
     body {
       font-family: Arial, sans-serif;
@@ -75,6 +78,89 @@
       width: 100%;
       min-height: 150px;
       resize: vertical;
+    }
+    /* CodeMirror Editor Styles */
+    .CodeMirror {
+      font-family: "Fira Code", "Consolas", "Monaco", "Courier New", monospace;
+      font-size: 14px;
+      line-height: 1.5;
+      border: 1px solid #ccc;
+      border-radius: 4px;
+      height: auto;
+      min-height: 300px;
+    }
+    .CodeMirror-scroll {
+      min-height: 300px;
+      max-height: 600px;
+    }
+    .CodeMirror-gutters {
+      border-right: 1px solid #ddd;
+      background-color: #f7f7f7;
+    }
+    /* Comment styling - vert avec style italique */
+    .CodeMirror .cm-comment {
+      color: #6a9955 !important;
+      font-style: italic !important;
+      background-color: rgba(106, 153, 85, 0.1);
+    }
+    /* SQL Keywords - bleu avec gras */
+    .CodeMirror .cm-keyword {
+      color: #569cd6 !important;
+      font-weight: bold !important;
+    }
+    /* Strings - orange/rouge */
+    .CodeMirror .cm-string {
+      color: #ce9178 !important;
+    }
+    /* Numbers - vert clair */
+    .CodeMirror .cm-number {
+      color: #b5cea8 !important;
+    }
+    /* Operators */
+    .CodeMirror .cm-operator {
+      color: #d4d4d4 !important;
+    }
+    /* Built-in functions */
+    .CodeMirror .cm-builtin {
+      color: #4ec9b0 !important;
+    }
+    /* Variables/identifiers */
+    .CodeMirror .cm-variable {
+      color: #9cdcfe !important;
+    }
+    /* Property names */
+    .CodeMirror .cm-property {
+      color: #9cdcfe !important;
+    }
+    /* Editor container */
+    .editor-wrapper {
+      position: relative;
+      margin-bottom: 10px;
+    }
+    .editor-controls {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 8px;
+      flex-wrap: wrap;
+      gap: 10px;
+    }
+    .font-size-control {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+    }
+    .font-size-control label {
+      font-size: 12px;
+      margin: 0;
+    }
+    .font-size-control input[type="range"] {
+      width: 100px;
+    }
+    .font-size-display {
+      font-size: 12px;
+      color: #666;
+      min-width: 40px;
     }
     button {
       padding: 8px 16px;
@@ -228,6 +314,12 @@
       flex: 1;
     }
   </style>
+  <!-- CodeMirror JavaScript -->
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/codemirror.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/mode/sql/sql.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/matchbrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/edit/closebrackets.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/codemirror/5.65.2/addon/selection/active-line.min.js"></script>
 </head>
 <body>
 <header>
@@ -272,8 +364,17 @@
 
   <div id="tab-editor" class="tab-content" style="display: none;">
     <section class="editor-container">
-      <label for="cql">Requête(s) CQL (séparées par des points-virgules, commentaires avec -- ou /* */) :</label>
-      <textarea id="cql" placeholder="Exemple : SELECT * FROM system.local;&#10;SELECT * FROM system.peers;&#10;&#10;Astuce : Sélectionnez une requête ou placez le curseur sur une requête pour l'exécuter seule.&#10;Les commentaires (-- et /* */) sont automatiquement ignorés."></textarea>
+      <div class="editor-controls">
+        <label for="cql" style="flex: 1;">Requête(s) CQL (séparées par des points-virgules, commentaires avec -- ou /* */) :</label>
+        <div class="font-size-control">
+          <label for="fontSize">Taille :</label>
+          <input type="range" id="fontSize" min="10" max="20" value="14" step="1" />
+          <span class="font-size-display" id="fontSizeDisplay">14px</span>
+        </div>
+      </div>
+      <div class="editor-wrapper">
+        <textarea id="cql" placeholder="Exemple : SELECT * FROM system.local;&#10;SELECT * FROM system.peers;&#10;&#10;Astuce : Sélectionnez une requête ou placez le curseur sur une requête pour l'exécuter seule.&#10;Les commentaires (-- et /* */) sont automatiquement ignorés."></textarea>
+      </div>
       <div id="queryPreview" class="status info" style="display: none; margin-top: 5px; font-size: 12px; font-style: italic;"></div>
       <div class="query-actions">
         <button id="runBtn">Exécuter (sélection/cursor)</button>
@@ -338,6 +439,89 @@
   const queryNameInput = document.getElementById('queryName');
   const savedQueriesList = document.getElementById('savedQueriesList');
   const queryPreview = document.getElementById('queryPreview');
+  const fontSizeControl = document.getElementById('fontSize');
+  const fontSizeDisplay = document.getElementById('fontSizeDisplay');
+
+  // Initialiser CodeMirror
+  let codeEditor = null;
+  
+  function initCodeEditor() {
+    codeEditor = CodeMirror.fromTextArea(cqlTextarea, {
+      mode: {
+        name: 'sql',
+        keywords: {
+          // Mots-clés CQL/Cassandra additionnels
+          all: true, alter: true, and: true, any: true, as: true, asc: true,
+          authorize: true, batch: true, begin: true, by: true, called: true,
+          cluster: true, columnfamily: true, compact: true, consistency: true,
+          count: true, create: true, delete: true, desc: true, describe: true,
+          distinct: true, drop: true, each_quorum: true, from: true, full: true,
+          grant: true, if: true, in: true, index: true, infile: true, insert: true,
+          into: true, is: true, keyspace: true, keyspaces: true, level: true,
+          limit: true, local_quorum: true, materialized: true, modify: true,
+          no: true, not: true, null: true, of: true, on: true, one: true,
+          or: true, order: true, password: true, primary: true, quorum: true,
+          rename: true, revoke: true, schema: true, select: true, set: true,
+          sstable: true, table: true, three: true, to: true, token: true,
+          truncate: true, two: true, unlogged: true, update: true, use: true,
+          using: true, view: true, where: true, with: true
+        }
+      },
+      theme: 'default',
+      lineNumbers: true,
+      lineWrapping: true,
+      indentWithTabs: false,
+      indentUnit: 2,
+      matchBrackets: true,
+      autoCloseBrackets: true,
+      styleActiveLine: true,
+      extraKeys: {
+        "Ctrl-Enter": function() { executeQuery(); },
+        "Cmd-Enter": function() { executeQuery(); }
+      }
+    });
+
+    // Mettre à jour la taille de police
+    fontSizeControl.addEventListener('input', function() {
+      const size = this.value;
+      fontSizeDisplay.textContent = size + 'px';
+      codeEditor.getWrapperElement().style.fontSize = size + 'px';
+      codeEditor.refresh();
+    });
+
+    // Initialiser la taille
+    codeEditor.getWrapperElement().style.fontSize = fontSizeControl.value + 'px';
+    
+    // Mettre à jour l'aperçu lors des changements
+    codeEditor.on('cursorActivity', updateQueryPreview);
+    codeEditor.on('change', updateQueryPreview);
+  }
+
+  // Fonction pour obtenir la valeur de l'éditeur
+  function getEditorValue() {
+    return codeEditor ? codeEditor.getValue() : cqlTextarea.value;
+  }
+
+  // Fonction pour définir la valeur de l'éditeur
+  function setEditorValue(value) {
+    if (codeEditor) {
+      codeEditor.setValue(value);
+    } else {
+      cqlTextarea.value = value;
+    }
+  }
+
+  // Fonction pour obtenir la sélection ou la position du curseur dans CodeMirror
+  function getEditorSelection() {
+    if (!codeEditor) {
+      return { start: cqlTextarea.selectionStart, end: cqlTextarea.selectionEnd };
+    }
+    const selection = codeEditor.getSelection();
+    if (selection) {
+      return { start: codeEditor.getCursor('start'), end: codeEditor.getCursor('end'), text: selection };
+    }
+    return { start: codeEditor.getCursor(), end: codeEditor.getCursor(), text: null };
+  }
 
   // Afficher un aperçu de la requête qui sera exécutée
   function updateQueryPreview() {
@@ -351,10 +535,12 @@
     }
   }
 
-  // Mettre à jour l'aperçu lors de la sélection ou du mouvement du curseur
-  cqlTextarea.addEventListener('mouseup', updateQueryPreview);
-  cqlTextarea.addEventListener('keyup', updateQueryPreview);
-  cqlTextarea.addEventListener('selectionchange', updateQueryPreview);
+  // Mettre à jour l'aperçu (CodeMirror gère ses propres événements)
+  if (!codeEditor) {
+    cqlTextarea.addEventListener('mouseup', updateQueryPreview);
+    cqlTextarea.addEventListener('keyup', updateQueryPreview);
+    cqlTextarea.addEventListener('selectionchange', updateQueryPreview);
+  }
 
   // Gestion des requêtes sauvegardées
   const STORAGE_KEY = 'cql_saved_queries';
@@ -419,7 +605,7 @@
   }
 
   function saveQuery() {
-    const query = cqlTextarea.value.trim();
+    const query = getEditorValue().trim();
     const name = queryNameInput.value.trim();
 
     if (!query) {
@@ -445,10 +631,13 @@
   function loadQuery(name) {
     const queries = getSavedQueries();
     if (queries[name]) {
-      cqlTextarea.value = queries[name];
+      setEditorValue(queries[name]);
       queryNameInput.value = name;
       statusDiv.textContent = `Requête "${name}" chargée.`;
       statusDiv.className = 'status success';
+      if (codeEditor) {
+        codeEditor.refresh();
+      }
     }
   }
 
@@ -524,71 +713,121 @@
   }
 
   function getQueryAtCursor() {
-    const text = cqlTextarea.value;
-    const start = cqlTextarea.selectionStart;
-    const end = cqlTextarea.selectionEnd;
+    const text = getEditorValue();
     
-    // Si du texte est sélectionné, utiliser la sélection
-    if (start !== end) {
-      const selected = text.substring(start, end).trim();
-      // Si la sélection contient au moins un caractère non-blanc, l'utiliser
-      if (selected.length > 0) {
-        return selected;
+    if (codeEditor) {
+      // Vérifier d'abord si du texte est sélectionné
+      const selection = codeEditor.getSelection();
+      if (selection && selection.trim().length > 0) {
+        return selection.trim();
       }
-    }
-    
-    // Sinon, trouver la requête à la position du curseur
-    // Chercher le point-virgule précédent ou le début du texte
-    let queryStart = 0;
-    let in_string = false;
-    let string_char = null;
-    
-    // Chercher vers le début pour trouver le point-virgule précédent
-    for (let i = start - 1; i >= 0; i--) {
-      const char = text[i];
-      // Gestion des chaînes de caractères
-      if ((char === "'" || char === '"') && (i === 0 || text[i-1] !== '\\')) {
-        if (!in_string) {
-          in_string = true;
-          string_char = char;
-        } else if (char === string_char) {
-          in_string = false;
-          string_char = null;
+      
+      // Sinon, trouver la requête à la position du curseur
+      const cursor = codeEditor.getCursor();
+      const cursorPos = codeEditor.indexFromPos(cursor);
+      
+      // Chercher le point-virgule précédent
+      let queryStart = 0;
+      let in_string = false;
+      let string_char = null;
+      
+      for (let i = cursorPos - 1; i >= 0; i--) {
+        const char = text[i];
+        if ((char === "'" || char === '"') && (i === 0 || text[i-1] !== '\\')) {
+          if (!in_string) {
+            in_string = true;
+            string_char = char;
+          } else if (char === string_char) {
+            in_string = false;
+            string_char = null;
+          }
+        }
+        if (char === ';' && !in_string) {
+          queryStart = i + 1;
+          break;
         }
       }
-      // Si on trouve un point-virgule hors d'une chaîne, c'est le début de la requête
-      if (char === ';' && !in_string) {
-        queryStart = i + 1;
-        break;
-      }
-    }
-    
-    // Chercher vers la fin pour trouver le point-virgule suivant
-    let queryEnd = text.length;
-    in_string = false;
-    string_char = null;
-    
-    for (let i = start; i < text.length; i++) {
-      const char = text[i];
-      // Gestion des chaînes de caractères
-      if ((char === "'" || char === '"') && (i === 0 || text[i-1] !== '\\')) {
-        if (!in_string) {
-          in_string = true;
-          string_char = char;
-        } else if (char === string_char) {
-          in_string = false;
-          string_char = null;
+      
+      // Chercher le point-virgule suivant
+      let queryEnd = text.length;
+      in_string = false;
+      string_char = null;
+      
+      for (let i = cursorPos; i < text.length; i++) {
+        const char = text[i];
+        if ((char === "'" || char === '"') && (i === 0 || text[i-1] !== '\\')) {
+          if (!in_string) {
+            in_string = true;
+            string_char = char;
+          } else if (char === string_char) {
+            in_string = false;
+            string_char = null;
+          }
+        }
+        if (char === ';' && !in_string) {
+          queryEnd = i;
+          break;
         }
       }
-      // Si on trouve un point-virgule hors d'une chaîne, c'est la fin de la requête
-      if (char === ';' && !in_string) {
-        queryEnd = i;
-        break;
+      
+      return text.substring(queryStart, queryEnd).trim();
+    } else {
+      // Fallback pour textarea classique
+      const start = cqlTextarea.selectionStart;
+      const end = cqlTextarea.selectionEnd;
+      
+      if (start !== end) {
+        const selected = text.substring(start, end).trim();
+        if (selected.length > 0) {
+          return selected;
+        }
       }
+      
+      // Trouver la requête à la position du curseur
+      let queryStart = 0;
+      let in_string = false;
+      let string_char = null;
+      
+      for (let i = start - 1; i >= 0; i--) {
+        const char = text[i];
+        if ((char === "'" || char === '"') && (i === 0 || text[i-1] !== '\\')) {
+          if (!in_string) {
+            in_string = true;
+            string_char = char;
+          } else if (char === string_char) {
+            in_string = false;
+            string_char = null;
+          }
+        }
+        if (char === ';' && !in_string) {
+          queryStart = i + 1;
+          break;
+        }
+      }
+      
+      let queryEnd = text.length;
+      in_string = false;
+      string_char = null;
+      
+      for (let i = start; i < text.length; i++) {
+        const char = text[i];
+        if ((char === "'" || char === '"') && (i === 0 || text[i-1] !== '\\')) {
+          if (!in_string) {
+            in_string = true;
+            string_char = char;
+          } else if (char === string_char) {
+            in_string = false;
+            string_char = null;
+          }
+        }
+        if (char === ';' && !in_string) {
+          queryEnd = i;
+          break;
+        }
+      }
+      
+      return text.substring(queryStart, queryEnd).trim();
     }
-    
-    const query = text.substring(queryStart, queryEnd).trim();
-    return query;
   }
 
   async function executeQuery() {
@@ -597,7 +836,7 @@
     
     // Si aucune requête trouvée, utiliser tout le texte
     if (!query) {
-      query = cqlTextarea.value.trim();
+      query = getEditorValue().trim();
     }
     
     statusDiv.textContent = '';
@@ -735,7 +974,7 @@
   const runAllBtn = document.getElementById('runAllBtn');
 
   async function executeAllQueries() {
-    const query = cqlTextarea.value.trim();
+    const query = getEditorValue().trim();
     statusDiv.textContent = '';
     statusDiv.className = 'status';
 
@@ -832,11 +1071,26 @@
   runBtn.addEventListener('click', executeQuery);
   runAllBtn.addEventListener('click', executeAllQueries);
   saveQueryBtn.addEventListener('click', saveQuery);
-  cqlTextarea.addEventListener('keydown', (e) => {
-    if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
-      executeQuery();
-    }
+
+  // Initialiser l'éditeur CodeMirror quand l'onglet éditeur est activé
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.getAttribute('data-tab');
+      if (target === 'editor' && !codeEditor) {
+        // Attendre un peu pour que le DOM soit prêt
+        setTimeout(() => {
+          initCodeEditor();
+        }, 100);
+      }
+    });
   });
+
+  // Initialiser immédiatement si l'onglet éditeur est déjà actif
+  if (tabEditor.style.display !== 'none') {
+    setTimeout(() => {
+      initCodeEditor();
+    }, 100);
+  }
 
   loadConfig();
   loadSavedQueries();
