@@ -146,19 +146,71 @@ async def update_config(payload: ConfigRequest):
         raise HTTPException(status_code=400, detail=f"Erreur de connexion : {str(e)}")
 
 
+def remove_comments(query_text: str) -> str:
+    """Supprime les commentaires CQL (-- et /* */) du texte."""
+    lines = query_text.split('\n')
+    cleaned_lines = []
+    in_block_comment = False
+    
+    for line in lines:
+        cleaned_line = []
+        i = 0
+        in_string = False
+        string_char = None
+        
+        while i < len(line):
+            char = line[i]
+            
+            # Gestion des chaînes de caractères
+            if char in ("'", '"') and (i == 0 or line[i-1] != '\\'):
+                if not in_string:
+                    in_string = True
+                    string_char = char
+                elif char == string_char:
+                    in_string = False
+                    string_char = None
+                cleaned_line.append(char)
+            elif not in_string:
+                # Vérifier les commentaires de ligne (--)
+                if i < len(line) - 1 and line[i:i+2] == '--':
+                    # Commentaire de ligne, ignorer le reste
+                    break
+                # Vérifier les commentaires de bloc (/* */)
+                elif i < len(line) - 1 and line[i:i+2] == '/*':
+                    in_block_comment = True
+                    i += 1  # Skip the *
+                elif i < len(line) - 1 and line[i:i+2] == '*/' and in_block_comment:
+                    in_block_comment = False
+                    i += 1  # Skip the *
+                elif not in_block_comment:
+                    cleaned_line.append(char)
+            else:
+                cleaned_line.append(char)
+            
+            i += 1
+        
+        if not in_block_comment:
+            cleaned_lines.append(''.join(cleaned_line))
+    
+    return '\n'.join(cleaned_lines)
+
+
 def split_queries(query_text: str) -> List[str]:
-    """Sépare le texte en plusieurs requêtes CQL en respectant les points-virgules."""
+    """Sépare le texte en plusieurs requêtes CQL en respectant les points-virgules et en ignorant les commentaires."""
+    # Supprimer les commentaires d'abord
+    cleaned_text = remove_comments(query_text)
+    
     queries = []
     current_query = []
     in_string = False
     string_char = None
     i = 0
     
-    while i < len(query_text):
-        char = query_text[i]
+    while i < len(cleaned_text):
+        char = cleaned_text[i]
         
         # Gestion des chaînes de caractères
-        if char in ("'", '"') and (i == 0 or query_text[i-1] != '\\'):
+        if char in ("'", '"') and (i == 0 or cleaned_text[i-1] != '\\'):
             if not in_string:
                 in_string = True
                 string_char = char

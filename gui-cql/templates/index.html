@@ -272,10 +272,12 @@
 
   <div id="tab-editor" class="tab-content" style="display: none;">
     <section class="editor-container">
-      <label for="cql">Requête(s) CQL (séparées par des points-virgules) :</label>
-      <textarea id="cql" placeholder="Exemple : SELECT * FROM system.local;&#10;SELECT * FROM system.peers;"></textarea>
+      <label for="cql">Requête(s) CQL (séparées par des points-virgules, commentaires avec -- ou /* */) :</label>
+      <textarea id="cql" placeholder="Exemple : SELECT * FROM system.local;&#10;SELECT * FROM system.peers;&#10;&#10;Astuce : Sélectionnez une requête ou placez le curseur sur une requête pour l'exécuter seule.&#10;Les commentaires (-- et /* */) sont automatiquement ignorés."></textarea>
+      <div id="queryPreview" class="status info" style="display: none; margin-top: 5px; font-size: 12px; font-style: italic;"></div>
       <div class="query-actions">
-        <button id="runBtn">Exécuter</button>
+        <button id="runBtn">Exécuter (sélection/cursor)</button>
+        <button id="runAllBtn" class="btn-secondary">Exécuter tout</button>
         <div class="query-input-group">
           <input type="text" id="queryName" placeholder="Nom de la requête..." />
           <button id="saveQueryBtn" class="btn-secondary btn-small">Sauvegarder</button>
@@ -335,6 +337,24 @@
   const saveQueryBtn = document.getElementById('saveQueryBtn');
   const queryNameInput = document.getElementById('queryName');
   const savedQueriesList = document.getElementById('savedQueriesList');
+  const queryPreview = document.getElementById('queryPreview');
+
+  // Afficher un aperçu de la requête qui sera exécutée
+  function updateQueryPreview() {
+    const query = getQueryAtCursor();
+    if (query && query.length > 0) {
+      const preview = query.length > 100 ? query.substring(0, 100) + '...' : query;
+      queryPreview.textContent = 'Requête à exécuter : ' + preview.replace(/\n/g, ' ');
+      queryPreview.style.display = 'block';
+    } else {
+      queryPreview.style.display = 'none';
+    }
+  }
+
+  // Mettre à jour l'aperçu lors de la sélection ou du mouvement du curseur
+  cqlTextarea.addEventListener('mouseup', updateQueryPreview);
+  cqlTextarea.addEventListener('keyup', updateQueryPreview);
+  cqlTextarea.addEventListener('selectionchange', updateQueryPreview);
 
   // Gestion des requêtes sauvegardées
   const STORAGE_KEY = 'cql_saved_queries';
@@ -503,13 +523,88 @@
     }
   }
 
+  function getQueryAtCursor() {
+    const text = cqlTextarea.value;
+    const start = cqlTextarea.selectionStart;
+    const end = cqlTextarea.selectionEnd;
+    
+    // Si du texte est sélectionné, utiliser la sélection
+    if (start !== end) {
+      const selected = text.substring(start, end).trim();
+      // Si la sélection contient au moins un caractère non-blanc, l'utiliser
+      if (selected.length > 0) {
+        return selected;
+      }
+    }
+    
+    // Sinon, trouver la requête à la position du curseur
+    // Chercher le point-virgule précédent ou le début du texte
+    let queryStart = 0;
+    let in_string = false;
+    let string_char = null;
+    
+    // Chercher vers le début pour trouver le point-virgule précédent
+    for (let i = start - 1; i >= 0; i--) {
+      const char = text[i];
+      // Gestion des chaînes de caractères
+      if ((char === "'" || char === '"') && (i === 0 || text[i-1] !== '\\')) {
+        if (!in_string) {
+          in_string = true;
+          string_char = char;
+        } else if (char === string_char) {
+          in_string = false;
+          string_char = null;
+        }
+      }
+      // Si on trouve un point-virgule hors d'une chaîne, c'est le début de la requête
+      if (char === ';' && !in_string) {
+        queryStart = i + 1;
+        break;
+      }
+    }
+    
+    // Chercher vers la fin pour trouver le point-virgule suivant
+    let queryEnd = text.length;
+    in_string = false;
+    string_char = null;
+    
+    for (let i = start; i < text.length; i++) {
+      const char = text[i];
+      // Gestion des chaînes de caractères
+      if ((char === "'" || char === '"') && (i === 0 || text[i-1] !== '\\')) {
+        if (!in_string) {
+          in_string = true;
+          string_char = char;
+        } else if (char === string_char) {
+          in_string = false;
+          string_char = null;
+        }
+      }
+      // Si on trouve un point-virgule hors d'une chaîne, c'est la fin de la requête
+      if (char === ';' && !in_string) {
+        queryEnd = i;
+        break;
+      }
+    }
+    
+    const query = text.substring(queryStart, queryEnd).trim();
+    return query;
+  }
+
   async function executeQuery() {
-    const query = cqlTextarea.value.trim();
+    // Récupérer la requête sélectionnée ou à la position du curseur
+    let query = getQueryAtCursor();
+    
+    // Si aucune requête trouvée, utiliser tout le texte
+    if (!query) {
+      query = cqlTextarea.value.trim();
+    }
+    
     statusDiv.textContent = '';
     statusDiv.className = 'status';
 
     if (!query) {
-      statusDiv.textContent = 'Veuillez saisir une requête CQL.';
+      statusDiv.textContent = 'Veuillez saisir une requête CQL ou sélectionner une requête.';
       statusDiv.classList.add('error');
       return;
     }
@@ -637,8 +732,105 @@
     return html;
   }
 
+  const runAllBtn = document.getElementById('runAllBtn');
+
+  async function executeAllQueries() {
+    const query = cqlTextarea.value.trim();
+    statusDiv.textContent = '';
+    statusDiv.className = 'status';
+
+    if (!query) {
+      statusDiv.textContent = 'Veuillez saisir une requête CQL.';
+      statusDiv.classList.add('error');
+      return;
+    }
+
+    statusDiv.textContent = 'Exécution en cours...';
+    try {
+      const response = await fetch('/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query }),
+      });
+
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        statusDiv.textContent = 'Erreur : ' + (err.detail || 'inconnue');
+        statusDiv.classList.add('error');
+        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
+        return;
+      }
+
+      const data = await response.json();
+
+      if (!data.success && data.type !== 'batch') {
+        statusDiv.textContent = 'Erreur : ' + (data.error || 'inconnue');
+        statusDiv.classList.add('error');
+        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
+        return;
+      }
+
+      // Gestion des résultats batch (plusieurs requêtes)
+      if (data.type === 'batch') {
+        statusDiv.textContent = `Exécution terminée : ${data.successful} réussie(s), ${data.failed} échouée(s) sur ${data.total_queries} requête(s).`;
+        statusDiv.className = data.failed === 0 ? 'status success' : 'status error';
+        
+        let html = '';
+        html += `<div class="batch-result-header">Résultats de ${data.total_queries} requête(s)</div>`;
+        
+        // Afficher les résultats réussis
+        for (const result of data.results) {
+          html += `<div class="batch-result success">`;
+          html += `<div class="batch-result-header">Requête ${result.query_index}: ${result.query}</div>`;
+          if (result.type === 'select') {
+            html += `<div>${result.row_count} ligne(s) retournée(s)</div>`;
+            html += renderTableHTML(result.columns, result.rows);
+          } else {
+            html += `<div>${result.message || 'OK'}</div>`;
+          }
+          html += `</div>`;
+        }
+        
+        // Afficher les erreurs
+        for (const error of data.errors) {
+          html += `<div class="batch-result error">`;
+          html += `<div class="batch-result-header">Requête ${error.query_index}: ${error.query}</div>`;
+          html += `<div style="color: #e74c3c;">Erreur : ${error.error}</div>`;
+          html += `</div>`;
+        }
+        
+        resultsDiv.innerHTML = html;
+        return;
+      }
+
+      // Gestion d'une seule requête (comportement original)
+      if (!data.success) {
+        statusDiv.textContent = 'Erreur : ' + (data.error || 'inconnue');
+        statusDiv.classList.add('error');
+        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
+        return;
+      }
+
+      statusDiv.textContent = 'Requête exécutée avec succès.';
+      statusDiv.classList.add('success');
+
+      if (data.type === 'select') {
+        renderTable(data.columns, data.rows);
+      } else {
+        resultsDiv.innerHTML = `<div>${data.message || 'OK'}</div>`;
+      }
+
+    } catch (err) {
+      console.error(err);
+      statusDiv.textContent = 'Erreur réseau ou serveur.';
+      statusDiv.classList.add('error');
+      resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
+    }
+  }
+
   saveConfigBtn.addEventListener('click', saveConfig);
   runBtn.addEventListener('click', executeQuery);
+  runAllBtn.addEventListener('click', executeAllQueries);
   saveQueryBtn.addEventListener('click', saveQuery);
   cqlTextarea.addEventListener('keydown', (e) => {
     if ((e.ctrlKey || e.metaKey) && e.key === 'Enter') {
