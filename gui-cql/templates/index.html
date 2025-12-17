@@ -985,6 +985,7 @@
   function updateQueryPreview(tabId) {
     const query = getQueryAtCursor(tabId);
     const previewDiv = document.getElementById(`queryPreview-${tabId}`);
+    if (!previewDiv) return;
     if (query && query.length > 0) {
       const preview = query.length > 100 ? query.substring(0, 100) + '...' : query;
       previewDiv.textContent = 'Requête à exécuter : ' + preview.replace(/\n/g, ' ');
@@ -1391,10 +1392,21 @@
     const resultsDiv = document.getElementById(`results-${tabId}`);
     const statusDiv = document.getElementById(`status-${tabId}`);
     const executeBtn = document.getElementById(`runBtn-${tabId}`);
-    // const loadingDiv = document.getElementById(`loading-${tabId}`);
+    const loadingDiv = document.getElementById(`loading-${tabId}`);
+
+    if (!resultsDiv || !statusDiv || !executeBtn) {
+      console.error('UI elements missing for executeQuery', {
+        tabId,
+        resultsDiv,
+        statusDiv,
+        executeBtn
+      });
+      alert('Interface non prête pour cet onglet. Réessayez après avoir ouvert l\'onglet.');
+      return;
+    }
 
     executeBtn.disabled = true;
-    // loadingDiv.style.display = 'block';
+    if (loadingDiv) loadingDiv.style.display = 'block';
     resultsDiv.innerHTML = '';
     statusDiv.textContent = 'Exécution en cours...';
     statusDiv.className = 'status info';
@@ -1429,7 +1441,7 @@
       resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l\'exécution.</div>';
     } finally {
       executeBtn.disabled = false;
-      // loadingDiv.style.display = 'none';
+      if (loadingDiv) loadingDiv.style.display = 'none';
     }
   }
 
@@ -1581,6 +1593,11 @@
     const query = getEditorValue(tabId).trim();
     if (!query) {
       const statusDiv = document.getElementById(`status-${tabId}`);
+      if (!statusDiv) {
+        console.error('UI elements missing for executeAllQueries (no query)', { tabId, statusDiv });
+        alert('Interface non prête pour cet onglet.');
+        return;
+      }
       statusDiv.textContent = 'Aucune requête à exécuter.';
       statusDiv.className = 'status error';
       return;
@@ -1588,10 +1605,20 @@
 
     const resultsDiv = document.getElementById(`results-${tabId}`);
     const runAllBtn = document.getElementById(`runAllBtn-${tabId}`);
-    // const loadingDiv = document.getElementById(`loading-${tabId}`);
+    const loadingDiv = document.getElementById(`loading-${tabId}`);
+
+    if (!resultsDiv || !runAllBtn) {
+      console.error('UI elements missing for executeAllQueries', {
+        tabId,
+        resultsDiv,
+        runAllBtn
+      });
+      alert('Interface non prête pour cet onglet. Réessayez après avoir ouvert l\'onglet.');
+      return;
+    }
 
     runAllBtn.disabled = true;
-    // loadingDiv.style.display = 'block';
+    if (loadingDiv) loadingDiv.style.display = 'block';
     resultsDiv.innerHTML = '';
 
     try {
@@ -1616,7 +1643,7 @@
       resultsDiv.innerHTML = `<div class="error">Erreur de connexion: ${error.message}</div>`;
     } finally {
       runAllBtn.disabled = false;
-      // loadingDiv.style.display = 'none';
+      if (loadingDiv) loadingDiv.style.display = 'none';
     }
   }
 
