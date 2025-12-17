@@ -604,11 +604,11 @@
       tab.classList.add('active');
       const target = tab.getAttribute('data-tab');
       if (target === 'config') {
-        tabConfig.style.display = 'block';
-        tabEditor.style.display = 'none';
+        if (tabConfig) tabConfig.style.display = 'block';
+        if (tabEditor) tabEditor.style.display = 'none';
       } else {
-        tabConfig.style.display = 'none';
-        tabEditor.style.display = 'block';
+        if (tabConfig) tabConfig.style.display = 'none';
+        if (tabEditor) tabEditor.style.display = 'block';
       }
     });
   });
@@ -725,6 +725,7 @@
   // Afficher un aperçu de la requête qui sera exécutée
   function updateQueryPreview() {
     const query = getQueryAtCursor();
+    if (!queryPreview) return;
     if (query && query.length > 0) {
       const preview = query.length > 100 ? query.substring(0, 100) + '...' : query;
       queryPreview.textContent = 'Requête à exécuter : ' + preview.replace(/\n/g, ' ');
@@ -1457,7 +1458,7 @@
   });
 
   // Initialiser immédiatement si l'onglet éditeur est déjà actif
-  if (tabEditor.style.display !== 'none') {
+  if (tabEditor && tabEditor.style.display !== 'none') {
     setTimeout(() => {
       initCodeEditor();
     }, 100);
