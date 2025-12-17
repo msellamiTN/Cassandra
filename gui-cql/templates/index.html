@@ -673,6 +673,13 @@
       content: ''
     }];
     createQueryTabElement(0);
+    
+    // Add click event listener to the static tab 0
+    const staticTab = document.querySelector('.query-tab[data-query-tab="0"]');
+    if (staticTab) {
+      staticTab.addEventListener('click', () => switchToQueryTab(0));
+    }
+    
     switchToQueryTab(0);
   }
 
@@ -682,108 +689,117 @@
     if (!tab) return;
 
     const tabsContainer = document.querySelector('.query-tabs');
-    const tabElement = document.createElement('div');
-    tabElement.className = 'query-tab';
-    tabElement.setAttribute('data-query-tab', tabId);
-    tabElement.innerHTML = `
-      <span class="query-tab-title">${tab.title}</span>
-      <span class="query-tab-close" onclick="closeQueryTab(${tabId}, event)">×</span>
-    `;
-    tabElement.addEventListener('click', () => switchToQueryTab(tabId));
-    tabsContainer.appendChild(tabElement);
+    let tabElement = document.querySelector(`.query-tab[data-query-tab="${tabId}"]`);
+    
+    if (!tabElement) {
+      // Create tab element if it doesn't exist
+      tabElement = document.createElement('div');
+      tabElement.className = 'query-tab';
+      tabElement.setAttribute('data-query-tab', tabId);
+      tabElement.innerHTML = `
+        <span class="query-tab-title">${tab.title}</span>
+        <span class="query-tab-close" onclick="closeQueryTab(${tabId}, event)">×</span>
+      `;
+      tabElement.addEventListener('click', () => switchToQueryTab(tabId));
+      tabsContainer.appendChild(tabElement);
+    }
 
-    // Create tab content
-    const contentElement = document.createElement('div');
-    contentElement.className = 'query-tab-content';
-    contentElement.setAttribute('data-query-tab', tabId);
-    contentElement.innerHTML = `
-      <div class="editor-layout">
-        <div class="editor-main">
-          <section class="editor-container">
-            <div class="editor-controls">
-              <label for="cql-${tabId}" style="flex: 1;">Requête(s) CQL (séparées par des points-virgules, commentaires avec -- ou /* */) :</label>
-              <div class="font-size-control">
-                <label for="fontSize-${tabId}">Taille :</label>
-                <input type="range" id="fontSize-${tabId}" min="10" max="20" value="14" step="1" />
-                <span class="font-size-display" id="fontSizeDisplay-${tabId}">14px</span>
+    // Check if content already exists
+    let contentElement = document.querySelector(`.query-tab-content[data-query-tab="${tabId}"]`);
+    if (!contentElement) {
+      // Create tab content if it doesn't exist
+      contentElement = document.createElement('div');
+      contentElement.className = 'query-tab-content';
+      contentElement.setAttribute('data-query-tab', tabId);
+      contentElement.innerHTML = `
+        <div class="editor-layout">
+          <div class="editor-main">
+            <section class="editor-container">
+              <div class="editor-controls">
+                <label for="cql-${tabId}" style="flex: 1;">Requête(s) CQL (séparées par des points-virgules, commentaires avec -- ou /* */) :</label>
+                <div class="font-size-control">
+                  <label for="fontSize-${tabId}">Taille :</label>
+                  <input type="range" id="fontSize-${tabId}" min="10" max="20" value="14" step="1" />
+                  <span class="font-size-display" id="fontSizeDisplay-${tabId}">14px</span>
+                </div>
+              </div>
+              <div class="editor-wrapper">
+                <textarea id="cql-${tabId}" placeholder="Exemple : SELECT * FROM system.local;&#10;SELECT * FROM system.peers;&#10;&#10;Astuce : Sélectionnez une requête ou placez le curseur sur une requête pour l'exécuter seule.&#10;Les commentaires (-- et /* */) sont automatiquement ignorés.">${tab.content}</textarea>
+              </div>
+              <div id="queryPreview-${tabId}" class="status info" style="display: none; margin-top: 5px; font-size: 12px; font-style: italic;"></div>
+              <div class="query-actions">
+                <button id="runBtn-${tabId}" onclick="executeQuery(${tabId})"><i class="fas fa-play icon"></i>Exécuter (sélection/cursor)</button>
+                <button id="runAllBtn-${tabId}" onclick="executeAllQueries(${tabId})" class="btn-secondary"><i class="fas fa-forward icon"></i>Exécuter tout</button>
+                <div class="file-input-wrapper">
+                  <input type="file" id="importFile-${tabId}" accept=".cql,.sql,.txt" onchange="importFile(${tabId})" />
+                  <label for="importFile-${tabId}" class="file-input-label">
+                    <i class="fas fa-file-import"></i>Importer CQL
+                  </label>
+                </div>
+                <div class="query-input-group">
+                  <input type="text" id="queryName-${tabId}" placeholder="Nom de la requête..." />
+                  <button id="saveQueryBtn-${tabId}" onclick="saveCurrentQuery(${tabId})" class="btn-secondary btn-small"><i class="fas fa-save icon"></i>Sauvegarder</button>
+                </div>
+              </div>
+              <div id="status-${tabId}" class="status"></div>
+            </section>
+
+            <section class="saved-queries">
+              <h3>Requêtes sauvegardées</h3>
+              <div id="savedQueriesList-${tabId}" class="saved-queries-list">
+                <div class="results-empty">Aucune requête sauvegardée.</div>
+              </div>
+            </section>
+
+            <section>
+              <h2>Résultats</h2>
+              <div id="results-${tabId}" class="results-container">
+                <div class="results-empty">Aucun résultat pour l'instant.</div>
+              </div>
+            </section>
+          </div>
+
+          <aside class="sidebar">
+            <div class="sidebar-section">
+              <div class="sidebar-header">
+                <h3><i class="fas fa-server icon"></i>Statut serveur</h3>
+                <button id="refreshStatusBtn-${tabId}" class="btn-secondary btn-small"><i class="fas fa-sync-alt icon"></i>Rafraîchir</button>
+              </div>
+              <div id="serverStatus-${tabId}" class="sidebar-body meta-empty"><i class="fas fa-times-circle icon icon-error"></i>Non connecté.</div>
+            </div>
+
+            <div class="sidebar-section">
+              <div class="sidebar-header">
+                <h3><i class="fas fa-database icon"></i>Keyspaces</h3>
+                <button id="refreshMetaBtn-${tabId}" class="btn-secondary btn-small"><i class="fas fa-sync-alt icon"></i>Rafraîchir</button>
+              </div>
+              <div id="keyspaceList-${tabId}" class="meta-list">
+                <div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucun keyspace chargé.</div>
               </div>
             </div>
-            <div class="editor-wrapper">
-              <textarea id="cql-${tabId}" placeholder="Exemple : SELECT * FROM system.local;&#10;SELECT * FROM system.peers;&#10;&#10;Astuce : Sélectionnez une requête ou placez le curseur sur une requête pour l'exécuter seule.&#10;Les commentaires (-- et /* */) sont automatiquement ignorés.">${tab.content}</textarea>
-            </div>
-            <div id="queryPreview-${tabId}" class="status info" style="display: none; margin-top: 5px; font-size: 12px; font-style: italic;"></div>
-            <div class="query-actions">
-              <button id="runBtn-${tabId}" onclick="executeQuery(${tabId})"><i class="fas fa-play icon"></i>Exécuter (sélection/cursor)</button>
-              <button id="runAllBtn-${tabId}" onclick="executeAllQueries(${tabId})" class="btn-secondary"><i class="fas fa-forward icon"></i>Exécuter tout</button>
-              <div class="file-input-wrapper">
-                <input type="file" id="importFile-${tabId}" accept=".cql,.sql,.txt" onchange="importFile(${tabId})" />
-                <label for="importFile-${tabId}" class="file-input-label">
-                  <i class="fas fa-file-import"></i>Importer CQL
-                </label>
+
+            <div class="sidebar-section">
+              <div class="sidebar-header">
+                <h3><i class="fas fa-table icon"></i>Tables</h3>
               </div>
-              <div class="query-input-group">
-                <input type="text" id="queryName-${tabId}" placeholder="Nom de la requête..." />
-                <button id="saveQueryBtn-${tabId}" onclick="saveCurrentQuery(${tabId})" class="btn-secondary btn-small"><i class="fas fa-save icon"></i>Sauvegarder</button>
+              <div id="tableList-${tabId}" class="meta-list">
+                <div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucune table.</div>
               </div>
             </div>
-            <div id="status-${tabId}" class="status"></div>
-          </section>
 
-          <section class="saved-queries">
-            <h3>Requêtes sauvegardées</h3>
-            <div id="savedQueriesList-${tabId}" class="saved-queries-list">
-              <div class="results-empty">Aucune requête sauvegardée.</div>
+            <div class="sidebar-section">
+              <div class="sidebar-header">
+                <h3><i class="fas fa-info-circle icon"></i>Détails</h3>
+              </div>
+              <div id="tableDetails-${tabId}" class="sidebar-body meta-empty"><i class="fas fa-mouse-pointer icon"></i>Sélectionnez une table.</div>
             </div>
-          </section>
-
-          <section>
-            <h2>Résultats</h2>
-            <div id="results-${tabId}" class="results-container">
-              <div class="results-empty">Aucun résultat pour l'instant.</div>
-            </div>
-          </section>
+          </aside>
         </div>
+      `;
 
-        <aside class="sidebar">
-          <div class="sidebar-section">
-            <div class="sidebar-header">
-              <h3><i class="fas fa-server icon"></i>Statut serveur</h3>
-              <button id="refreshStatusBtn-${tabId}" class="btn-secondary btn-small"><i class="fas fa-sync-alt icon"></i>Rafraîchir</button>
-            </div>
-            <div id="serverStatus-${tabId}" class="sidebar-body meta-empty"><i class="fas fa-times-circle icon icon-error"></i>Non connecté.</div>
-          </div>
-
-          <div class="sidebar-section">
-            <div class="sidebar-header">
-              <h3><i class="fas fa-database icon"></i>Keyspaces</h3>
-              <button id="refreshMetaBtn-${tabId}" class="btn-secondary btn-small"><i class="fas fa-sync-alt icon"></i>Rafraîchir</button>
-            </div>
-            <div id="keyspaceList-${tabId}" class="meta-list">
-              <div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucun keyspace chargé.</div>
-            </div>
-          </div>
-
-          <div class="sidebar-section">
-            <div class="sidebar-header">
-              <h3><i class="fas fa-table icon"></i>Tables</h3>
-            </div>
-            <div id="tableList-${tabId}" class="meta-list">
-              <div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucune table.</div>
-            </div>
-          </div>
-
-          <div class="sidebar-section">
-            <div class="sidebar-header">
-              <h3><i class="fas fa-info-circle icon"></i>Détails</h3>
-            </div>
-            <div id="tableDetails-${tabId}" class="sidebar-body meta-empty"><i class="fas fa-mouse-pointer icon"></i>Sélectionnez une table.</div>
-          </div>
-        </aside>
-      </div>
-    `;
-
-    const tabsContainerDiv = document.querySelector('.query-tabs-container');
-    tabsContainerDiv.appendChild(contentElement);
+      const tabsContainerDiv = document.querySelector('.query-tabs-container');
+      tabsContainerDiv.appendChild(contentElement);
+    }
 
     // Initialize CodeMirror for this tab
     initCodeEditorForTab(tabId);
@@ -1375,10 +1391,10 @@
     const resultsDiv = document.getElementById(`results-${tabId}`);
     const statusDiv = document.getElementById(`status-${tabId}`);
     const executeBtn = document.getElementById(`runBtn-${tabId}`);
-    const loadingDiv = document.getElementById(`loading-${tabId}`);
+    // const loadingDiv = document.getElementById(`loading-${tabId}`);
 
     executeBtn.disabled = true;
-    loadingDiv.style.display = 'block';
+    // loadingDiv.style.display = 'block';
     resultsDiv.innerHTML = '';
     statusDiv.textContent = 'Exécution en cours...';
     statusDiv.className = 'status info';
@@ -1413,7 +1429,7 @@
       resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l\'exécution.</div>';
     } finally {
       executeBtn.disabled = false;
-      loadingDiv.style.display = 'none';
+      // loadingDiv.style.display = 'none';
     }
   }
 
@@ -1572,10 +1588,10 @@
 
     const resultsDiv = document.getElementById(`results-${tabId}`);
     const runAllBtn = document.getElementById(`runAllBtn-${tabId}`);
-    const loadingDiv = document.getElementById(`loading-${tabId}`);
+    // const loadingDiv = document.getElementById(`loading-${tabId}`);
 
     runAllBtn.disabled = true;
-    loadingDiv.style.display = 'block';
+    // loadingDiv.style.display = 'block';
     resultsDiv.innerHTML = '';
 
     try {
@@ -1600,7 +1616,7 @@
       resultsDiv.innerHTML = `<div class="error">Erreur de connexion: ${error.message}</div>`;
     } finally {
       runAllBtn.disabled = false;
-      loadingDiv.style.display = 'none';
+      // loadingDiv.style.display = 'none';
     }
   }
 
