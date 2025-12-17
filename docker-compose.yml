@@ -55,8 +55,7 @@ services:
     networks:
       - cassandra-net
   jupyter:
-    build:
-      context: .
+    image: quay.io/jupyter/base-notebook
     ports:
       - 8888:8888
     volumes:
