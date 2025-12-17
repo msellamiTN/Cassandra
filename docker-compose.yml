@@ -55,11 +55,7 @@ services:
     networks:
       - cassandra-net
   jupyter:
-<<<<<<< HEAD
     image: quay.io/jupyter/base-notebook
-=======
-    image: jupyter/base-notebook
->>>>>>> teaching/single-tab
     ports:
       - 8888:8888
     volumes:
