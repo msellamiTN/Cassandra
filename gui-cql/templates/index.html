@@ -811,6 +811,8 @@
     if (refreshMetaBtn) {
       refreshMetaBtn.addEventListener('click', () => refreshMetadata(tabId));
     }
+
+    loadSavedQueries(tabId);
   }
 
   // Initialize CodeMirror for a specific tab
@@ -926,7 +928,7 @@
 
   // Close a query tab
   function closeQueryTab(tabId, event) {
-    event.stopPropagation();
+    if (event) event.stopPropagation();
     
     if (queryTabs.length <= 1) {
       alert('Vous ne pouvez pas fermer le dernier onglet.');
@@ -936,13 +938,14 @@
     // Remove tab from array
     const tabIndex = queryTabs.findIndex(t => t.id === tabId);
     if (tabIndex === -1) return;
-    
+
+    const closedTab = queryTabs[tabIndex];
     queryTabs.splice(tabIndex, 1);
 
-    const closedTab = queryTabs.find(t => t.id === tabId);
     if (closedTab && closedTab.editor) {
       try {
         closedTab.editor.toTextArea();
+        closedTab.editor = null;
       } catch (e) {
         console.error(e);
       }
@@ -972,7 +975,7 @@
     }
 
     // Configuration
-    saveConfigBtn.addEventListener('click', saveConfig);
+    if (saveConfigBtn) saveConfigBtn.addEventListener('click', saveConfig);
 
     // Global sidebar buttons are now handled per-tab
   }
@@ -1192,7 +1195,7 @@
   }
 
   // Gestion des requêtes sauvegardées
-  const STORAGE_KEY = 'cql_saved_queries';
+  const STORAGE_KEY = 'cassandra_queries';
 
   function getSavedQueries() {
     try {
@@ -1211,23 +1214,10 @@
     }
   }
 
-  function loadSavedQueries() {
-    // Load saved queries for all tabs
+  function loadSavedQueriesAllTabs() {
     queryTabs.forEach(tab => {
       loadSavedQueries(tab.id);
     });
-  }
-
-  function saveQuery() {
-    saveCurrentQuery(activeQueryTab);
-  }
-
-  function loadQuery(name) {
-    loadQuery(name, activeQueryTab);
-  }
-
-  function deleteQuery(name) {
-    deleteQuery(name, activeQueryTab);
   }
 
   async function loadConfig() {
@@ -1476,10 +1466,6 @@
     }
   }
 
-  const runAllBtn = document.getElementById('runAllBtn');
-
-  saveConfigBtn.addEventListener('click', saveConfig);
-
   // Initialize query tabs when editor tab is activated
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
@@ -1488,7 +1474,7 @@
         // Initialize tabs if not already done
         if (queryTabs.length === 0) {
           initQueryTabs();
-          loadSavedQueries(0);
+          loadSavedQueriesAllTabs();
           loadStatus(0);
           loadKeyspaces(0);
         }
@@ -1497,16 +1483,7 @@
   });
 
   // ---- Gestion des requêtes sauvegardées ----
-  function getSavedQueries() {
-    const saved = localStorage.getItem('cassandra_queries');
-    return saved ? JSON.parse(saved) : {};
-  }
-
-  function saveQueries(queries) {
-    localStorage.setItem('cassandra_queries', JSON.stringify(queries));
-  }
-
-  function loadSavedQueries(tabId) {
+  function loadSavedQueries(tabId = activeQueryTab) {
     const queries = getSavedQueries();
     const listDiv = document.getElementById(`savedQueriesList-${tabId}`);
     
@@ -1535,7 +1512,7 @@
     listDiv.innerHTML = html;
   }
 
-  function saveCurrentQuery(tabId) {
+  function saveCurrentQuery(tabId = activeQueryTab) {
     const queryNameInput = document.getElementById(`queryName-${tabId}`);
     const statusDiv = document.getElementById(`status-${tabId}`);
     if (!queryNameInput || !statusDiv) return;
@@ -1564,7 +1541,7 @@
     statusDiv.className = 'status success';
   }
 
-  function loadQuery(name, tabId) {
+  function loadQuery(name, tabId = activeQueryTab) {
     const queries = getSavedQueries();
     if (queries[name]) {
       setEditorValue(tabId, queries[name]);
@@ -1580,7 +1557,7 @@
     }
   }
 
-  function deleteQuery(name, tabId) {
+  function deleteQuery(name, tabId = activeQueryTab) {
     if (!confirm(`Supprimer la requête "${name}" ?`)) {
       return;
     }
@@ -1597,7 +1574,7 @@
   }
 
   // ---- Import/Export de fichiers ----
-  function importFile(tabId) {
+  function importFile(tabId = activeQueryTab) {
     const fileInput = document.getElementById(`importFile-${tabId}`);
     if (!fileInput) return;
     const file = fileInput.files[0];
