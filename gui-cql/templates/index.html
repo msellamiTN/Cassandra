@@ -625,11 +625,11 @@
       tab.classList.add('active');
       const target = tab.getAttribute('data-tab');
       if (target === 'config') {
-        tabConfig.style.display = 'block';
-        tabEditor.style.display = 'none';
+        if (tabConfig) tabConfig.style.display = 'block';
+        if (tabEditor) tabEditor.style.display = 'none';
       } else {
-        tabConfig.style.display = 'none';
-        tabEditor.style.display = 'block';
+        if (tabConfig) tabConfig.style.display = 'none';
+        if (tabEditor) tabEditor.style.display = 'block';
       }
     });
   });
@@ -656,12 +656,8 @@
 
   // Initialize the application
   document.addEventListener('DOMContentLoaded', function() {
-    initQueryTabs();
     loadConfig();
     initEventListeners();
-    loadSavedQueries();
-    loadStatus(0);
-    loadKeyspaces(0);
   });
 
   // Initialize query tabs system
@@ -689,6 +685,7 @@
     if (!tab) return;
 
     const tabsContainer = document.querySelector('.query-tabs');
+    if (!tabsContainer) return;
     let tabElement = document.querySelector(`.query-tab[data-query-tab="${tabId}"]`);
     
     if (!tabElement) {
@@ -798,6 +795,7 @@
       `;
 
       const tabsContainerDiv = document.querySelector('.query-tabs-container');
+      if (!tabsContainerDiv) return;
       tabsContainerDiv.appendChild(contentElement);
     }
 
@@ -820,6 +818,7 @@
     const textarea = document.getElementById(`cql-${tabId}`);
     const tab = queryTabs.find(t => t.id === tabId);
     if (!textarea || !tab) return;
+    if (tab.editor) return;
 
     const editor = CodeMirror.fromTextArea(textarea, {
       mode: {
@@ -861,14 +860,16 @@
     const fontSizeControl = document.getElementById(`fontSize-${tabId}`);
     const fontSizeDisplay = document.getElementById(`fontSizeDisplay-${tabId}`);
     
-    fontSizeControl.addEventListener('input', function() {
-      const size = this.value;
-      fontSizeDisplay.textContent = size + 'px';
-      editor.getWrapperElement().style.fontSize = size + 'px';
-      editor.refresh();
-    });
+    if (fontSizeControl && fontSizeDisplay) {
+      fontSizeControl.addEventListener('input', function() {
+        const size = this.value;
+        fontSizeDisplay.textContent = size + 'px';
+        editor.getWrapperElement().style.fontSize = size + 'px';
+        editor.refresh();
+      });
 
-    editor.getWrapperElement().style.fontSize = fontSizeControl.value + 'px';
+      editor.getWrapperElement().style.fontSize = fontSizeControl.value + 'px';
+    }
     
     // Query preview
     editor.on('cursorActivity', () => updateQueryPreview(tabId));
@@ -881,15 +882,26 @@
     document.querySelectorAll('.query-tab').forEach(tab => {
       tab.classList.remove('active');
     });
-    document.querySelector(`.query-tab[data-query-tab="${tabId}"]`).classList.add('active');
+    const tabEl = document.querySelector(`.query-tab[data-query-tab="${tabId}"]`);
+    if (tabEl) tabEl.classList.add('active');
 
     // Update content visibility
     document.querySelectorAll('.query-tab-content').forEach(content => {
       content.classList.remove('active');
     });
-    document.querySelector(`.query-tab-content[data-query-tab="${tabId}"]`).classList.add('active');
+    const contentEl = document.querySelector(`.query-tab-content[data-query-tab="${tabId}"]`);
+    if (contentEl) contentEl.classList.add('active');
 
     activeQueryTab = tabId;
+
+    const tab = queryTabs.find(t => t.id === tabId);
+    if (tab && tab.editor) {
+      try {
+        tab.editor.refresh();
+      } catch (e) {
+        console.error(e);
+      }
+    }
   }
 
   // Add a new query tab
@@ -927,9 +939,20 @@
     
     queryTabs.splice(tabIndex, 1);
 
+    const closedTab = queryTabs.find(t => t.id === tabId);
+    if (closedTab && closedTab.editor) {
+      try {
+        closedTab.editor.toTextArea();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
     // Remove DOM elements
-    document.querySelector(`.query-tab[data-query-tab="${tabId}"]`).remove();
-    document.querySelector(`.query-tab-content[data-query-tab="${tabId}"]`).remove();
+    const tabEl = document.querySelector(`.query-tab[data-query-tab="${tabId}"]`);
+    if (tabEl) tabEl.remove();
+    const contentEl = document.querySelector(`.query-tab-content[data-query-tab="${tabId}"]`);
+    if (contentEl) contentEl.remove();
 
     // Switch to another tab
     if (activeQueryTab === tabId) {
@@ -943,7 +966,10 @@
   // Initialize event listeners
   function initEventListeners() {
     // Add query tab button
-    document.getElementById('addQueryTabBtn').addEventListener('click', addQueryTab);
+    const addQueryTabBtn = document.getElementById('addQueryTabBtn');
+    if (addQueryTabBtn) {
+      addQueryTabBtn.addEventListener('click', addQueryTab);
+    }
 
     // Configuration
     saveConfigBtn.addEventListener('click', saveConfig);
@@ -954,7 +980,9 @@
   // Fonction pour obtenir la valeur de l'éditeur d'un onglet
   function getEditorValue(tabId) {
     const tab = queryTabs.find(t => t.id === tabId);
-    return tab && tab.editor ? tab.editor.getValue() : document.getElementById(`cql-${tabId}`).value;
+    if (tab && tab.editor) return tab.editor.getValue();
+    const textarea = document.getElementById(`cql-${tabId}`);
+    return textarea ? textarea.value : '';
   }
 
   // Fonction pour définir la valeur de l'éditeur d'un onglet
@@ -963,7 +991,8 @@
     if (tab && tab.editor) {
       tab.editor.setValue(value);
     } else {
-      document.getElementById(`cql-${tabId}`).value = value;
+      const textarea = document.getElementById(`cql-${tabId}`);
+      if (textarea) textarea.value = value;
     }
   }
 
@@ -972,6 +1001,7 @@
     const tab = queryTabs.find(t => t.id === tabId);
     if (!tab || !tab.editor) {
       const textarea = document.getElementById(`cql-${tabId}`);
+      if (!textarea) return { start: 0, end: 0 };
       return { start: textarea.selectionStart, end: textarea.selectionEnd };
     }
     const selection = tab.editor.getSelection();
@@ -1324,6 +1354,7 @@
     } else {
       // Fallback pour textarea classique
       const textarea = document.getElementById(`cql-${tabId}`);
+      if (!textarea) return null;
       const start = textarea.selectionStart;
       const end = textarea.selectionEnd;
       
@@ -1457,6 +1488,9 @@
         // Initialize tabs if not already done
         if (queryTabs.length === 0) {
           initQueryTabs();
+          loadSavedQueries(0);
+          loadStatus(0);
+          loadKeyspaces(0);
         }
       }
     });
@@ -1504,6 +1538,7 @@
   function saveCurrentQuery(tabId) {
     const queryNameInput = document.getElementById(`queryName-${tabId}`);
     const statusDiv = document.getElementById(`status-${tabId}`);
+    if (!queryNameInput || !statusDiv) return;
     const query = getEditorValue(tabId).trim();
     const name = queryNameInput.value.trim();
 
@@ -1533,8 +1568,10 @@
     const queries = getSavedQueries();
     if (queries[name]) {
       setEditorValue(tabId, queries[name]);
-      document.getElementById(`queryName-${tabId}`).value = name;
+      const queryNameInput = document.getElementById(`queryName-${tabId}`);
+      if (queryNameInput) queryNameInput.value = name;
       const statusDiv = document.getElementById(`status-${tabId}`);
+      if (!statusDiv) return;
       statusDiv.textContent = `Requête "${name}" chargée.`;
       statusDiv.className = 'status success';
       if (queryTabs.find(t => t.id === tabId).editor) {
@@ -1554,6 +1591,7 @@
     loadSavedQueries(tabId);
     
     const statusDiv = document.getElementById(`status-${tabId}`);
+    if (!statusDiv) return;
     statusDiv.textContent = `Requête "${name}" supprimée.`;
     statusDiv.className = 'status info';
   }
@@ -1561,10 +1599,12 @@
   // ---- Import/Export de fichiers ----
   function importFile(tabId) {
     const fileInput = document.getElementById(`importFile-${tabId}`);
+    if (!fileInput) return;
     const file = fileInput.files[0];
     if (!file) return;
 
     const statusDiv = document.getElementById(`status-${tabId}`);
+    if (!statusDiv) return;
     statusDiv.textContent = 'Importation en cours...';
     statusDiv.className = 'status info';
 

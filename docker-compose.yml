@@ -55,12 +55,11 @@ services:
     networks:
       - cassandra-net
   jupyter:
-    build:
-      context: .
+    image: jupyter/base-notebook
     ports:
-      - 8889:8888
+      - 8888:8888
     volumes:
-      - jupyter-data:/home/jovyan/work
+      - ./jupyter-data:/home/jovyan/work
     command: start-notebook.py --NotebookApp.token='my-token'
     networks:
       - cassandra-net
