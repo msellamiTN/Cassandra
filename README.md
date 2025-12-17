@@ -64,7 +64,7 @@ cd Cassandra
 Dans le dossier du projet :
 
 ```bash
-docker compose up -d
+docker compose up -d --build
 ```
 
 Vérifier l’état des services :
