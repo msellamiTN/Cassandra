@@ -604,41 +604,6 @@
       </div>
     </div>
 
-    <aside class="sidebar">
-      <div class="sidebar-section">
-        <div class="sidebar-header">
-          <h3><i class="fas fa-server icon"></i>Statut serveur</h3>
-          <button id="refreshStatusBtn" class="btn-secondary btn-small"><i class="fas fa-sync-alt icon"></i>Rafraîchir</button>
-        </div>
-        <div id="serverStatus" class="sidebar-body meta-empty"><i class="fas fa-times-circle icon icon-error"></i>Non connecté.</div>
-      </div>
-
-      <div class="sidebar-section">
-        <div class="sidebar-header">
-          <h3><i class="fas fa-database icon"></i>Keyspaces</h3>
-          <button id="refreshMetaBtn" class="btn-secondary btn-small"><i class="fas fa-sync-alt icon"></i>Rafraîchir</button>
-        </div>
-        <div id="keyspaceList" class="meta-list">
-          <div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucun keyspace chargé.</div>
-        </div>
-      </div>
-
-      <div class="sidebar-section">
-        <div class="sidebar-header">
-          <h3><i class="fas fa-table icon"></i>Tables</h3>
-        </div>
-        <div id="tableList" class="meta-list">
-          <div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucune table.</div>
-        </div>
-      </div>
-
-      <div class="sidebar-section">
-        <div class="sidebar-header">
-          <h3><i class="fas fa-info-circle icon"></i>Détails</h3>
-        </div>
-        <div id="tableDetails" class="sidebar-body meta-empty"><i class="fas fa-mouse-pointer icon"></i>Sélectionnez une table.</div>
-      </div>
-    </aside>
   </div>
 </main>
 
@@ -678,13 +643,13 @@
   const saveConfigBtn = document.getElementById('saveConfigBtn');
   const configStatus = document.getElementById('configStatus');
 
-  // Sidebar elements
-  const serverStatusDiv = document.getElementById('serverStatus');
-  const keyspaceListDiv = document.getElementById('keyspaceList');
-  const tableListDiv = document.getElementById('tableList');
-  const tableDetailsDiv = document.getElementById('tableDetails');
-  const refreshStatusBtn = document.getElementById('refreshStatusBtn');
-  const refreshMetaBtn = document.getElementById('refreshMetaBtn');
+  // Sidebar elements (will be accessed per tab)
+  // const serverStatusDiv = document.getElementById('serverStatus');
+  // const keyspaceListDiv = document.getElementById('keyspaceList');
+  // const tableListDiv = document.getElementById('tableList');
+  // const tableDetailsDiv = document.getElementById('tableDetails');
+  // const refreshStatusBtn = document.getElementById('refreshStatusBtn');
+  // const refreshMetaBtn = document.getElementById('refreshMetaBtn');
 
   let selectedKeyspace = null;
   let selectedTable = null;
@@ -695,8 +660,8 @@
     loadConfig();
     initEventListeners();
     loadSavedQueries();
-    loadStatus();
-    loadKeyspaces();
+    loadStatus(0);
+    loadKeyspaces(0);
   });
 
   // Initialize query tabs system
@@ -778,6 +743,42 @@
             </div>
           </section>
         </div>
+
+        <aside class="sidebar">
+          <div class="sidebar-section">
+            <div class="sidebar-header">
+              <h3><i class="fas fa-server icon"></i>Statut serveur</h3>
+              <button id="refreshStatusBtn-${tabId}" class="btn-secondary btn-small"><i class="fas fa-sync-alt icon"></i>Rafraîchir</button>
+            </div>
+            <div id="serverStatus-${tabId}" class="sidebar-body meta-empty"><i class="fas fa-times-circle icon icon-error"></i>Non connecté.</div>
+          </div>
+
+          <div class="sidebar-section">
+            <div class="sidebar-header">
+              <h3><i class="fas fa-database icon"></i>Keyspaces</h3>
+              <button id="refreshMetaBtn-${tabId}" class="btn-secondary btn-small"><i class="fas fa-sync-alt icon"></i>Rafraîchir</button>
+            </div>
+            <div id="keyspaceList-${tabId}" class="meta-list">
+              <div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucun keyspace chargé.</div>
+            </div>
+          </div>
+
+          <div class="sidebar-section">
+            <div class="sidebar-header">
+              <h3><i class="fas fa-table icon"></i>Tables</h3>
+            </div>
+            <div id="tableList-${tabId}" class="meta-list">
+              <div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucune table.</div>
+            </div>
+          </div>
+
+          <div class="sidebar-section">
+            <div class="sidebar-header">
+              <h3><i class="fas fa-info-circle icon"></i>Détails</h3>
+            </div>
+            <div id="tableDetails-${tabId}" class="sidebar-body meta-empty"><i class="fas fa-mouse-pointer icon"></i>Sélectionnez une table.</div>
+          </div>
+        </aside>
       </div>
     `;
 
@@ -786,6 +787,16 @@
 
     // Initialize CodeMirror for this tab
     initCodeEditorForTab(tabId);
+
+    // Set up event listeners for tab-specific buttons
+    const refreshStatusBtn = document.getElementById(`refreshStatusBtn-${tabId}`);
+    const refreshMetaBtn = document.getElementById(`refreshMetaBtn-${tabId}`);
+    if (refreshStatusBtn) {
+      refreshStatusBtn.addEventListener('click', () => loadStatus(tabId));
+    }
+    if (refreshMetaBtn) {
+      refreshMetaBtn.addEventListener('click', () => refreshMetadata(tabId));
+    }
   }
 
   // Initialize CodeMirror for a specific tab
@@ -879,6 +890,10 @@
 
     createQueryTabElement(newTabId);
     switchToQueryTab(newTabId);
+    
+    // Load sidebar data for the new tab
+    loadStatus(newTabId);
+    loadKeyspaces(newTabId);
   }
 
   // Close a query tab
@@ -917,9 +932,7 @@
     // Configuration
     saveConfigBtn.addEventListener('click', saveConfig);
 
-    // Sidebar
-    refreshStatusBtn.addEventListener('click', loadStatus);
-    refreshMetaBtn.addEventListener('click', refreshMetadata);
+    // Global sidebar buttons are now handled per-tab
   }
 
   // Fonction pour obtenir la valeur de l'éditeur d'un onglet
@@ -976,7 +989,10 @@
   }
 
   // ---- Métadonnées (statut, keyspaces, tables) ----
-  function renderServerStatus(data) {
+  function renderServerStatus(data, tabId = activeQueryTab) {
+    const serverStatusDiv = document.getElementById(`serverStatus-${tabId}`);
+    if (!serverStatusDiv) return;
+
     if (!data || !data.connected) {
       serverStatusDiv.innerHTML = '<div class="meta-empty"><i class="fas fa-times-circle icon icon-error"></i>Non connecté.</div>';
       return;
@@ -990,7 +1006,10 @@
     `;
   }
 
-  function renderKeyspaces(list) {
+  function renderKeyspaces(list, tabId = activeQueryTab) {
+    const keyspaceListDiv = document.getElementById(`keyspaceList-${tabId}`);
+    if (!keyspaceListDiv) return;
+
     if (!list || list.length === 0) {
       keyspaceListDiv.innerHTML = '<div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucun keyspace.</div>';
       return;
@@ -1000,12 +1019,16 @@
       const div = document.createElement('div');
       div.className = 'meta-item' + (ks === selectedKeyspace ? ' active' : '');
       div.innerHTML = `<i class="fas fa-database icon"></i><span>${ks}</span>`;
-      div.addEventListener('click', () => loadTables(ks));
+      div.addEventListener('click', () => loadTables(ks, tabId));
       keyspaceListDiv.appendChild(div);
     });
   }
 
-  function renderTables(tables) {
+  function renderTables(tables, tabId = activeQueryTab) {
+    const tableListDiv = document.getElementById(`tableList-${tabId}`);
+    const tableDetailsDiv = document.getElementById(`tableDetails-${tabId}`);
+    if (!tableListDiv || !tableDetailsDiv) return;
+
     if (!tables || tables.length === 0) {
       tableListDiv.innerHTML = '<div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucune table.</div>';
       tableDetailsDiv.innerHTML = '<i class="fas fa-mouse-pointer icon"></i>Sélectionnez une table.';
@@ -1020,12 +1043,15 @@
         <div class="meta-item-title"><i class="fas fa-table icon"></i>${table.name}</div>
         <div class="meta-item-sub"><i class="fas fa-columns icon"></i>${table.columns.length} colonne(s)</div>
       `;
-      div.addEventListener('click', () => renderTableDetails(table));
+      div.addEventListener('click', () => renderTableDetails(table, tabId));
       tableListDiv.appendChild(div);
     });
   }
 
-  function renderTableDetails(table) {
+  function renderTableDetails(table, tabId = activeQueryTab) {
+    const tableDetailsDiv = document.getElementById(`tableDetails-${tabId}`);
+    if (!tableDetailsDiv) return;
+
     if (!table) {
       tableDetailsDiv.innerHTML = '<i class="fas fa-mouse-pointer icon"></i>Sélectionnez une table.';
       return;
@@ -1049,58 +1075,73 @@
       <div style="margin-top:8px; margin-bottom:4px;"><strong><i class="fas fa-list icon"></i>Colonnes :</strong></div>
       <div style="margin-top:4px;">${cols || '<div class="meta-empty">Aucune colonne</div>'}</div>
     `;
-    document.querySelectorAll('#tableList .meta-item').forEach((el) => {
+    document.querySelectorAll(`#tableList-${tabId} .meta-item`).forEach((el) => {
       const nameEl = el.querySelector('.meta-item-title');
       el.classList.toggle('active', nameEl && nameEl.textContent && nameEl.textContent.includes(table.name));
     });
   }
 
-  async function loadStatus() {
+  async function loadStatus(tabId = activeQueryTab) {
     try {
       const data = await fetchJson('/api/status');
-      renderServerStatus(data);
+      renderServerStatus(data, tabId);
     } catch (e) {
-      serverStatusDiv.innerHTML = `<div class="meta-empty">Erreur: ${e.message}</div>`;
+      const serverStatusDiv = document.getElementById(`serverStatus-${tabId}`);
+      if (serverStatusDiv) {
+        serverStatusDiv.innerHTML = `<div class="meta-empty">Erreur: ${e.message}</div>`;
+      }
     }
   }
 
-  async function loadKeyspaces() {
+  async function loadKeyspaces(tabId = activeQueryTab) {
     try {
       const data = await fetchJson('/api/keyspaces');
       const ksList = data.keyspaces || [];
-      renderKeyspaces(ksList);
+      renderKeyspaces(ksList, tabId);
       if (selectedKeyspace && !ksList.includes(selectedKeyspace)) {
         selectedKeyspace = null;
-        renderTables([]);
+        renderTables([], tabId);
       }
       if (!selectedKeyspace && ksList.length > 0) {
-        loadTables(ksList[0]);
+        loadTables(ksList[0], tabId);
       }
     } catch (e) {
-      keyspaceListDiv.innerHTML = `<div class="meta-empty">Erreur: ${e.message}</div>`;
+      const keyspaceListDiv = document.getElementById(`keyspaceList-${tabId}`);
+      if (keyspaceListDiv) {
+        keyspaceListDiv.innerHTML = `<div class="meta-empty">Erreur: ${e.message}</div>`;
+      }
     }
   }
 
-  async function loadTables(keyspace) {
+  async function loadTables(keyspace, tabId = activeQueryTab) {
     selectedKeyspace = keyspace;
     selectedTable = null;
-    document.querySelectorAll('#keyspaceList .meta-item').forEach((el) => {
+    document.querySelectorAll(`#keyspaceList-${tabId} .meta-item`).forEach((el) => {
       el.classList.toggle('active', el.textContent === keyspace);
     });
 
     try {
       const data = await fetchJson(`/api/keyspaces/${encodeURIComponent(keyspace)}/tables`);
-      renderTables(data.tables || []);
-      tableDetailsDiv.innerHTML = 'Sélectionnez une table.';
+      renderTables(data.tables || [], tabId);
+      const tableDetailsDiv = document.getElementById(`tableDetails-${tabId}`);
+      if (tableDetailsDiv) {
+        tableDetailsDiv.innerHTML = 'Sélectionnez une table.';
+      }
     } catch (e) {
-      tableListDiv.innerHTML = `<div class="meta-empty">Erreur: ${e.message}</div>`;
-      tableDetailsDiv.innerHTML = 'Sélectionnez une table.';
+      const tableListDiv = document.getElementById(`tableList-${tabId}`);
+      const tableDetailsDiv = document.getElementById(`tableDetails-${tabId}`);
+      if (tableListDiv) {
+        tableListDiv.innerHTML = `<div class="meta-empty">Erreur: ${e.message}</div>`;
+      }
+      if (tableDetailsDiv) {
+        tableDetailsDiv.innerHTML = 'Sélectionnez une table.';
+      }
     }
   }
 
-  async function refreshMetadata() {
-    await loadStatus();
-    await loadKeyspaces();
+  async function refreshMetadata(tabId = activeQueryTab) {
+    await loadStatus(tabId);
+    await loadKeyspaces(tabId);
   }
 
   // Gestion des requêtes sauvegardées
