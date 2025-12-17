@@ -54,6 +54,25 @@ services:
       - ./cql-scripts:/app/cql-scripts
     networks:
       - cassandra-net
+
+  fleet-dashboard:
+    build: ./fleet-dashboard
+    container_name: fleet-dashboard
+    hostname: fleet-dashboard
+    platform: linux/amd64
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    environment:
+      - CASSANDRA_HOSTS=cassandra
+      - CASSANDRA_PORT=9042
+      - CASSANDRA_KEYSPACE=atelier
+      - PORT=7860
+    ports:
+      - "7860:7860"
+    networks:
+      - cassandra-net
+
   jupyter:
     image: quay.io/jupyter/base-notebook
     ports:
