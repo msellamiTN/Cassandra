@@ -50,6 +50,8 @@ services:
       # - CASSANDRA_PASSWORD=password
     ports:
       - "8889:8000"
+    volumes:
+      - ./cql-scripts:/app/cql-scripts
     networks:
       - cassandra-net
 

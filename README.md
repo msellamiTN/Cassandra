@@ -37,6 +37,9 @@ docker compose version
 .
 ├── docker-compose.yml
 ├── README.md
+├── cql-scripts/
+│   ├── README.md
+│   └── sample.cql
 └── gui-cql/
     ├── Dockerfile
     ├── main.py
@@ -132,7 +135,16 @@ SELECT * FROM users;
 ```
 
 ---
+## 📝 Gestion des scripts CQL
 
+L'interface web permet de sauvegarder et charger des scripts CQL :
+
+- **Sauvegarder** : Utilisez le bouton "Save Script" pour enregistrer votre code CQL
+- **Charger** : Utilisez le bouton "Load Script" pour ouvrir un script existant
+- **Scripts stockés** : Les fichiers sont sauvegardés dans le dossier `cql-scripts/` du projet
+- **Persistance** : Les scripts sont conservés même après redémarrage des conteneurs
+
+---
 ## 🛑 Arrêt de l’environnement
 
 ```bash
@@ -153,6 +165,7 @@ docker compose down -v
 - L'interface permet l'exécution de requêtes CQL multiples (séparées par des points-virgules)
 - Les résultats des SELECT sont affichés dans des tableaux HTML
 - Navigation possible dans les keyspaces et tables via l'interface
+- **Gestion des scripts** : Sauvegarde et chargement de scripts CQL dans le dossier monté
 
 ---
 

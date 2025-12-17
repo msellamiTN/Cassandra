@@ -1,5 +1,6 @@
 import os
 from typing import Any, Dict, List
+from pathlib import Path
 
 from fastapi import FastAPI, Request, HTTPException
 from fastapi.responses import HTMLResponse
@@ -39,6 +40,15 @@ class ConfigRequest(BaseModel):
     username: str = ""
     password: str = ""
     keyspace: str = ""
+
+
+class ScriptRequest(BaseModel):
+    content: str
+
+
+# Directory for storing CQL scripts
+SCRIPTS_DIR = Path("/app/cql-scripts")
+SCRIPTS_DIR.mkdir(exist_ok=True)
 
 
 cluster: Cluster | None = None
@@ -219,6 +229,85 @@ async def list_tables(keyspace: str):
         raise
     except Exception as exc:
         raise HTTPException(status_code=500, detail=f"Impossible de lister les tables : {exc}")
+
+
+@app.get("/api/scripts")
+async def list_scripts():
+    """Liste les scripts CQL disponibles."""
+    try:
+        scripts = []
+        for file_path in SCRIPTS_DIR.glob("*.cql"):
+            if file_path.is_file():
+                stat = file_path.stat()
+                scripts.append({
+                    "name": file_path.name,
+                    "size": stat.st_size,
+                    "modified": stat.st_mtime,
+                })
+        return {
+            "success": True,
+            "scripts": sorted(scripts, key=lambda s: s["name"]),
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Impossible de lister les scripts : {exc}")
+
+
+@app.get("/api/scripts/{filename}")
+async def load_script(filename: str):
+    """Charge le contenu d'un script CQL."""
+    if not filename.endswith('.cql'):
+        raise HTTPException(status_code=400, detail="Le fichier doit avoir l'extension .cql")
+    
+    script_path = SCRIPTS_DIR / filename
+    if not script_path.exists():
+        raise HTTPException(status_code=404, detail=f"Script '{filename}' introuvable.")
+    
+    try:
+        content = script_path.read_text(encoding='utf-8')
+        return {
+            "success": True,
+            "filename": filename,
+            "content": content,
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Impossible de charger le script : {exc}")
+
+
+@app.post("/api/scripts/{filename}")
+async def save_script(filename: str, payload: ScriptRequest):
+    """Sauvegarde un script CQL."""
+    if not filename.endswith('.cql'):
+        raise HTTPException(status_code=400, detail="Le fichier doit avoir l'extension .cql")
+    
+    script_path = SCRIPTS_DIR / filename
+    try:
+        script_path.write_text(payload.content, encoding='utf-8')
+        return {
+            "success": True,
+            "message": f"Script '{filename}' sauvegardé avec succès.",
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Impossible de sauvegarder le script : {exc}")
+
+
+@app.delete("/api/scripts/{filename}")
+async def delete_script(filename: str):
+    """Supprime un script CQL."""
+    if not filename.endswith('.cql'):
+        raise HTTPException(status_code=400, detail="Le fichier doit avoir l'extension .cql")
+    
+    script_path = SCRIPTS_DIR / filename
+    if not script_path.exists():
+        raise HTTPException(status_code=404, detail=f"Script '{filename}' introuvable.")
+    
+    try:
+        script_path.unlink()
+        return {
+            "success": True,
+            "message": f"Script '{filename}' supprimé avec succès.",
+        }
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"Impossible de supprimer le script : {exc}")
 
 
 def remove_comments(query_text: str) -> str:

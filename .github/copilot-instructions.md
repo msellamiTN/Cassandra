@@ -14,8 +14,9 @@ The web app allows users to configure Cassandra connections, browse keyspaces/ta
 - **Connection Management**: Global cluster/session objects initialized on startup, reconnectable via API
 
 ## Key Components
-- `main.py`: FastAPI app with endpoints for config, status, keyspaces, tables, and query execution
+- `main.py`: FastAPI app with endpoints for config, status, keyspaces, tables, query execution, and script management
 - `templates/index.html`: Single-page app with tabs for configuration and query editor
+- `cql-scripts/`: Directory for storing CQL script files (mounted as volume)
 - `docker-compose.yml`: Orchestrates Cassandra and web app services
 - `sample.cql`: Example CQL commands for testing
 
@@ -58,6 +59,10 @@ docker compose down
 - GET `/api/keyspaces`: List available keyspaces
 - GET `/api/keyspaces/{name}/tables`: List tables with column metadata
 - POST `/execute`: Execute CQL query/queries
+- GET `/api/scripts`: List available CQL scripts
+- GET `/api/scripts/{filename}`: Load a CQL script
+- POST `/api/scripts/{filename}`: Save a CQL script
+- DELETE `/api/scripts/{filename}`: Delete a CQL script
 
 ### Error Handling
 - Use HTTPException for API errors with descriptive messages
