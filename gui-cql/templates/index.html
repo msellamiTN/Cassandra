@@ -743,6 +743,9 @@
     initQueryTabs();
     loadConfig();
     initEventListeners();
+    loadSavedQueries();
+    loadStatus();
+    loadKeyspaces();
   });
 
   // Initialize query tabs system
@@ -1000,7 +1003,7 @@
     saveConfigBtn.addEventListener('click', saveConfig);
 
     // Sidebar
-    refreshStatusBtn.addEventListener('click', refreshStatus);
+    refreshStatusBtn.addEventListener('click', loadStatus);
     refreshMetaBtn.addEventListener('click', refreshMetadata);
   }
 
@@ -1489,6 +1492,11 @@
     const queries = getSavedQueries();
     const listDiv = document.getElementById(`savedQueriesList-${tabId}`);
     
+    if (!listDiv) {
+      // Tab content not created yet, skip
+      return;
+    }
+    
     if (Object.keys(queries).length === 0) {
       listDiv.innerHTML = '<div class="results-empty">Aucune requête sauvegardée.</div>';
       return;
@@ -1678,11 +1686,6 @@
     html += '</tbody></table>';
     return html;
   }
-
-  loadConfig();
-  loadSavedQueries();
-  loadStatus();
-  loadKeyspaces();
 </script>
 </body>
 </html>
