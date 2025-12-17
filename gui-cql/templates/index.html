@@ -998,53 +998,10 @@
 
     // Configuration
     saveConfigBtn.addEventListener('click', saveConfig);
-    
+
     // Sidebar
     refreshStatusBtn.addEventListener('click', refreshStatus);
     refreshMetaBtn.addEventListener('click', refreshMetadata);
-  }
-          cluster: true, columnfamily: true, compact: true, consistency: true,
-          count: true, create: true, delete: true, desc: true, describe: true,
-          distinct: true, drop: true, each_quorum: true, from: true, full: true,
-          grant: true, if: true, in: true, index: true, infile: true, insert: true,
-          into: true, is: true, keyspace: true, keyspaces: true, level: true,
-          limit: true, local_quorum: true, materialized: true, modify: true,
-          no: true, not: true, null: true, of: true, on: true, one: true,
-          or: true, order: true, password: true, primary: true, quorum: true,
-          rename: true, revoke: true, schema: true, select: true, set: true,
-          sstable: true, table: true, three: true, to: true, token: true,
-          truncate: true, two: true, unlogged: true, update: true, use: true,
-          using: true, view: true, where: true, with: true
-        }
-      },
-      theme: 'default',
-      lineNumbers: true,
-      lineWrapping: true,
-      indentWithTabs: false,
-      indentUnit: 2,
-      matchBrackets: true,
-      autoCloseBrackets: true,
-      styleActiveLine: true,
-      extraKeys: {
-        "Ctrl-Enter": function() { executeQuery(); },
-        "Cmd-Enter": function() { executeQuery(); }
-      }
-    });
-
-    // Mettre à jour la taille de police
-    fontSizeControl.addEventListener('input', function() {
-      const size = this.value;
-      fontSizeDisplay.textContent = size + 'px';
-      codeEditor.getWrapperElement().style.fontSize = size + 'px';
-      codeEditor.refresh();
-    });
-
-    // Initialiser la taille
-    codeEditor.getWrapperElement().style.fontSize = fontSizeControl.value + 'px';
-    
-    // Mettre à jour l'aperçu lors des changements
-    codeEditor.on('cursorActivity', updateQueryPreview);
-    codeEditor.on('change', updateQueryPreview);
   }
 
   // Fonction pour obtenir la valeur de l'éditeur d'un onglet
@@ -1327,25 +1284,27 @@
     }
   }
 
-  function getQueryAtCursor() {
-    const text = getEditorValue();
-    
-    if (codeEditor) {
+  // Obtenir la requête à la position du curseur
+  function getQueryAtCursor(tabId) {
+    const text = getEditorValue(tabId);
+    const tab = queryTabs.find(t => t.id === tabId);
+
+    if (tab && tab.editor) {
       // Vérifier d'abord si du texte est sélectionné
-      const selection = codeEditor.getSelection();
+      const selection = tab.editor.getSelection();
       if (selection && selection.trim().length > 0) {
         return selection.trim();
       }
-      
+
       // Sinon, trouver la requête à la position du curseur
-      const cursor = codeEditor.getCursor();
-      const cursorPos = codeEditor.indexFromPos(cursor);
-      
+      const cursor = tab.editor.getCursor();
+      const cursorPos = tab.editor.indexFromPos(cursor);
+
       // Chercher le point-virgule précédent
       let queryStart = 0;
       let in_string = false;
       let string_char = null;
-      
+
       for (let i = cursorPos - 1; i >= 0; i--) {
         const char = text[i];
         if ((char === "'" || char === '"') && (i === 0 || text[i-1] !== '\\')) {
@@ -1362,12 +1321,12 @@
           break;
         }
       }
-      
+
       // Chercher le point-virgule suivant
       let queryEnd = text.length;
       in_string = false;
       string_char = null;
-      
+
       for (let i = cursorPos; i < text.length; i++) {
         const char = text[i];
         if ((char === "'" || char === '"') && (i === 0 || text[i-1] !== '\\')) {
@@ -1384,12 +1343,13 @@
           break;
         }
       }
-      
+
       return text.substring(queryStart, queryEnd).trim();
     } else {
       // Fallback pour textarea classique
-      const start = cqlTextarea.selectionStart;
-      const end = cqlTextarea.selectionEnd;
+      const textarea = document.getElementById(`cql-${tabId}`);
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
       
       if (start !== end) {
         const selected = text.substring(start, end).trim();
@@ -1445,167 +1405,60 @@
     }
   }
 
-  async function executeQuery() {
-    executeQuery(activeQueryTab);
-  }
-        statusDiv.textContent = 'Erreur : ' + (data.error || 'inconnue');
-        statusDiv.classList.add('error');
-        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
-        return;
-      }
-
-      statusDiv.textContent = 'Requête exécutée avec succès.';
-      statusDiv.classList.add('success');
-
-      if (data.type === 'select') {
-        renderTable(data.columns, data.rows);
-      } else {
-        resultsDiv.innerHTML = `<div>${data.message || 'OK'}</div>`;
-      }
-
-    } catch (err) {
-      console.error(err);
-      statusDiv.textContent = 'Erreur réseau ou serveur.';
-      statusDiv.classList.add('error');
-      resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l’exécution.</div>';
-    }
-  }
-
-  function renderTable(columns, rows) {
-    if (!rows || rows.length === 0) {
-      resultsDiv.innerHTML = '<div class="results-empty">Aucune ligne retournée.</div>';
+  // Exécuter une requête CQL
+  async function executeQuery(tabId) {
+    const query = getQueryAtCursor(tabId);
+    if (!query || !query.trim()) {
+      alert('Aucune requête à exécuter. Placez le curseur sur une requête valide.');
       return;
     }
 
-    resultsDiv.innerHTML = renderTableHTML(columns, rows);
-  }
+    const resultsDiv = document.getElementById(`results-${tabId}`);
+    const statusDiv = document.getElementById(`status-${tabId}`);
+    const executeBtn = document.getElementById(`runBtn-${tabId}`);
+    const loadingDiv = document.getElementById(`loading-${tabId}`);
 
-  function renderTableHTML(columns, rows) {
-    if (!rows || rows.length === 0) {
-      return '<div class="results-empty">Aucune ligne retournée.</div>';
-    }
-
-    let html = '<table><thead><tr>';
-    for (const col of columns) {
-      html += `<th>${col}</th>`;
-    }
-    html += '</tr></thead><tbody>';
-
-    for (const row of rows) {
-      html += '<tr>';
-      for (const col of columns) {
-        let value = row[col];
-        if (value === null || value === undefined) {
-          value = '';
-        } else if (typeof value === 'object') {
-          value = JSON.stringify(value);
-        }
-        // Échapper les caractères HTML pour la sécurité
-        value = String(value).replace(/</g, '&lt;').replace(/>/g, '&gt;');
-        html += `<td>${value}</td>`;
-      }
-      html += '</tr>';
-    }
-
-    html += '</tbody></table>';
-    return html;
-  }
-
-  const runAllBtn = document.getElementById('runAllBtn');
-
-  async function executeAllQueries() {
-    const query = getEditorValue().trim();
-    statusDiv.textContent = '';
-    statusDiv.className = 'status';
-
-    if (!query) {
-      statusDiv.textContent = 'Veuillez saisir une requête CQL.';
-      statusDiv.classList.add('error');
-      return;
-    }
-
+    executeBtn.disabled = true;
+    loadingDiv.style.display = 'block';
+    resultsDiv.innerHTML = '';
     statusDiv.textContent = 'Exécution en cours...';
+    statusDiv.className = 'status info';
+
     try {
       const response = await fetch('/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query: query })
       });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        statusDiv.textContent = 'Erreur : ' + (err.detail || 'inconnue');
-        statusDiv.classList.add('error');
-        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
-        return;
-      }
 
       const data = await response.json();
 
-      if (!data.success && data.type !== 'batch') {
-        statusDiv.textContent = 'Erreur : ' + (data.error || 'inconnue');
-        statusDiv.classList.add('error');
-        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
-        return;
-      }
+      if (data.success) {
+        statusDiv.textContent = 'Requête exécutée avec succès.';
+        statusDiv.className = 'status success';
 
-      // Gestion des résultats batch (plusieurs requêtes)
-      if (data.type === 'batch') {
-        statusDiv.textContent = `Exécution terminée : ${data.successful} réussie(s), ${data.failed} échouée(s) sur ${data.total_queries} requête(s).`;
-        statusDiv.className = data.failed === 0 ? 'status success' : 'status error';
-        
-        let html = '';
-        html += `<div class="batch-result-header">Résultats de ${data.total_queries} requête(s)</div>`;
-        
-        // Afficher les résultats réussis
-        for (const result of data.results) {
-          html += `<div class="batch-result success">`;
-          html += `<div class="batch-result-header">Requête ${result.query_index}: ${result.query}</div>`;
-          if (result.type === 'select') {
-            html += `<div>${result.row_count} ligne(s) retournée(s)</div>`;
-            html += renderTableHTML(result.columns, result.rows);
-          } else {
-            html += `<div>${result.message || 'OK'}</div>`;
-          }
-          html += `</div>`;
+        if (data.results && data.results.length > 0) {
+          resultsDiv.innerHTML = renderTableHTML(data.results[0].columns, data.results[0].rows);
+        } else {
+          resultsDiv.innerHTML = '<div class="results-empty">Aucune ligne retournée.</div>';
         }
-        
-        // Afficher les erreurs
-        for (const error of data.errors) {
-          html += `<div class="batch-result error">`;
-          html += `<div class="batch-result-header">Requête ${error.query_index}: ${error.query}</div>`;
-          html += `<div style="color: #e74c3c;">Erreur : ${error.error}</div>`;
-          html += `</div>`;
-        }
-        
-        resultsDiv.innerHTML = html;
-        return;
-      }
-
-      // Gestion d'une seule requête (comportement original)
-      if (!data.success) {
-        statusDiv.textContent = 'Erreur : ' + (data.error || 'inconnue');
-        statusDiv.classList.add('error');
-        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
-        return;
-      }
-
-      statusDiv.textContent = 'Requête exécutée avec succès.';
-      statusDiv.classList.add('success');
-
-      if (data.type === 'select') {
-        renderTable(data.columns, data.rows);
       } else {
-        resultsDiv.innerHTML = `<div>${data.message || 'OK'}</div>`;
+        statusDiv.textContent = 'Erreur : ' + (data.error || 'inconnue');
+        statusDiv.className = 'status error';
+        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l\'exécution.</div>';
       }
-
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
       statusDiv.textContent = 'Erreur réseau ou serveur.';
-      statusDiv.classList.add('error');
-      resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
+      statusDiv.className = 'status error';
+      resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l\'exécution.</div>';
+    } finally {
+      executeBtn.disabled = false;
+      loadingDiv.style.display = 'none';
     }
   }
+
+  const runAllBtn = document.getElementById('runAllBtn');
 
   saveConfigBtn.addEventListener('click', saveConfig);
 
