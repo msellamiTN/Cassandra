@@ -602,92 +602,43 @@
           <i class="fas fa-plus"></i>
         </button>
       </div>
-      <div class="query-tab-content active" data-query-tab="0">
-        <div class="editor-layout">
-          <div class="editor-main">
-            <section class="editor-container">
-              <div class="editor-controls">
-                <label for="cql-0" style="flex: 1;">Requête(s) CQL (séparées par des points-virgules, commentaires avec -- ou /* */) :</label>
-                <div class="font-size-control">
-                  <label for="fontSize-0">Taille :</label>
-                  <input type="range" id="fontSize-0" min="10" max="20" value="14" step="1" />
-                  <span class="font-size-display" id="fontSizeDisplay-0">14px</span>
-                </div>
-              </div>
-              <div class="editor-wrapper">
-                <textarea id="cql-0" placeholder="Exemple : SELECT * FROM system.local;&#10;SELECT * FROM system.peers;&#10;&#10;Astuce : Sélectionnez une requête ou placez le curseur sur une requête pour l'exécuter seule.&#10;Les commentaires (-- et /* */) sont automatiquement ignorés."></textarea>
-              </div>
-              <div id="queryPreview-0" class="status info" style="display: none; margin-top: 5px; font-size: 12px; font-style: italic;"></div>
-              <div class="query-actions">
-                <button id="runBtn-0" onclick="executeQuery(0)"><i class="fas fa-play icon"></i>Exécuter (sélection/cursor)</button>
-                <button id="runAllBtn-0" onclick="executeAllQueries(0)" class="btn-secondary"><i class="fas fa-forward icon"></i>Exécuter tout</button>
-                <div class="file-input-wrapper">
-                  <input type="file" id="importFile-0" accept=".cql,.sql,.txt" onchange="importFile(0)" />
-                  <label for="importFile-0" class="file-input-label">
-                    <i class="fas fa-file-import"></i>Importer CQL
-                  </label>
-                </div>
-                <div class="query-input-group">
-                  <input type="text" id="queryName-0" placeholder="Nom de la requête..." />
-                  <button id="saveQueryBtn-0" onclick="saveCurrentQuery(0)" class="btn-secondary btn-small"><i class="fas fa-save icon"></i>Sauvegarder</button>
-                </div>
-              </div>
-              <div id="status-0" class="status"></div>
-            </section>
+    </div>
 
-            <section class="saved-queries">
-              <h3>Requêtes sauvegardées</h3>
-              <div id="savedQueriesList-0" class="saved-queries-list">
-                <div class="results-empty">Aucune requête sauvegardée.</div>
-              </div>
-            </section>
+    <aside class="sidebar">
+      <div class="sidebar-section">
+        <div class="sidebar-header">
+          <h3><i class="fas fa-server icon"></i>Statut serveur</h3>
+          <button id="refreshStatusBtn" class="btn-secondary btn-small"><i class="fas fa-sync-alt icon"></i>Rafraîchir</button>
+        </div>
+        <div id="serverStatus" class="sidebar-body meta-empty"><i class="fas fa-times-circle icon icon-error"></i>Non connecté.</div>
+      </div>
 
-            <section>
-              <h2>Résultats</h2>
-              <div id="results-0" class="results-container">
-                <div class="results-empty">Aucun résultat pour l'instant.</div>
-              </div>
-            </section>
-          </div>
-
-          <aside class="sidebar">
-            <div class="sidebar-section">
-              <div class="sidebar-header">
-                <h3><i class="fas fa-server icon"></i>Statut serveur</h3>
-                <button id="refreshStatusBtn" class="btn-secondary btn-small"><i class="fas fa-sync-alt icon"></i>Rafraîchir</button>
-              </div>
-              <div id="serverStatus" class="sidebar-body meta-empty"><i class="fas fa-times-circle icon icon-error"></i>Non connecté.</div>
-            </div>
-
-            <div class="sidebar-section">
-              <div class="sidebar-header">
-                <h3><i class="fas fa-database icon"></i>Keyspaces</h3>
-                <button id="refreshMetaBtn" class="btn-secondary btn-small"><i class="fas fa-sync-alt icon"></i>Rafraîchir</button>
-              </div>
-              <div id="keyspaceList" class="meta-list">
-                <div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucun keyspace chargé.</div>
-              </div>
-            </div>
-
-            <div class="sidebar-section">
-              <div class="sidebar-header">
-                <h3><i class="fas fa-table icon"></i>Tables</h3>
-              </div>
-              <div id="tableList" class="meta-list">
-                <div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucune table.</div>
-              </div>
-            </div>
-
-            <div class="sidebar-section">
-              <div class="sidebar-header">
-                <h3><i class="fas fa-info-circle icon"></i>Détails</h3>
-              </div>
-              <div id="tableDetails" class="sidebar-body meta-empty"><i class="fas fa-mouse-pointer icon"></i>Sélectionnez une table.</div>
-            </div>
-          </aside>
+      <div class="sidebar-section">
+        <div class="sidebar-header">
+          <h3><i class="fas fa-database icon"></i>Keyspaces</h3>
+          <button id="refreshMetaBtn" class="btn-secondary btn-small"><i class="fas fa-sync-alt icon"></i>Rafraîchir</button>
+        </div>
+        <div id="keyspaceList" class="meta-list">
+          <div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucun keyspace chargé.</div>
         </div>
       </div>
-    </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-header">
+          <h3><i class="fas fa-table icon"></i>Tables</h3>
+        </div>
+        <div id="tableList" class="meta-list">
+          <div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucune table.</div>
+        </div>
+      </div>
+
+      <div class="sidebar-section">
+        <div class="sidebar-header">
+          <h3><i class="fas fa-info-circle icon"></i>Détails</h3>
+        </div>
+        <div id="tableDetails" class="sidebar-body meta-empty"><i class="fas fa-mouse-pointer icon"></i>Sélectionnez une table.</div>
+      </div>
+    </aside>
   </div>
 </main>
 
