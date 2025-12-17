@@ -1,6 +1,6 @@
-# 🐳 DataStax Studio 6.8.32 – Docker Workshop
+# 🐳 CQL Web Editor - Docker Workshop
 
-Ce projet permet de lancer **DataStax Studio 6.8.32** avec **Apache Cassandra** en utilisant **Docker Compose**.
+Ce projet permet de lancer un **éditeur CQL web personnalisé** avec **Apache Cassandra** en utilisant **Docker Compose**.
 
 👉 Solution **clé en main**, compatible **Windows, Linux et macOS (y compris Apple Silicon M1/M2/M3)**.
 
@@ -8,7 +8,7 @@ Ce projet permet de lancer **DataStax Studio 6.8.32** avec **Apache Cassandra** 
 
 ## 🎯 Objectifs
 
-- Démarrer rapidement DataStax Studio sans dépendances locales
+- Démarrer rapidement un éditeur CQL web sans dépendances locales
 - Éviter les problèmes Java / ARM / Rosetta
 - Fournir un environnement reproductible pour **TP, formations et démonstrations**
 
@@ -19,7 +19,7 @@ Ce projet permet de lancer **DataStax Studio 6.8.32** avec **Apache Cassandra** 
 - Docker **20+**
 - Docker Compose **v2**
 - Ports libres :
-  - `9091` (Studio UI)
+  - `8889` (CQL Web Editor UI)
   - `9042` (Cassandra)
 
 Vérification :
@@ -36,7 +36,14 @@ docker compose version
 ```text
 .
 ├── docker-compose.yml
-└── README.md
+├── README.md
+└── gui-cql/
+    ├── Dockerfile
+    ├── main.py
+    ├── requirements.txt
+    ├── sample.cql
+    └── templates/
+        └── index.html
 ```
 
 ---
@@ -66,36 +73,36 @@ Vérifier l’état des services :
 docker compose ps
 ```
 
-Suivre les logs de Studio :
+Suivre les logs de l'éditeur CQL :
 
 ```bash
-docker logs -f datastax-studio
+docker compose logs -f cql-gui
 ```
 
 ---
 
-## 🌐 Accès à DataStax Studio
+## 🌐 Accès à l'éditeur CQL Web
 
 Ouvrir un navigateur :
 
 ```
-http://localhost:9091
+http://localhost:8889
 ```
 
 ---
 
-## 🔌 Connexion à Cassandra (dans Studio)
+## 🔌 Configuration de la connexion Cassandra (dans l'interface web)
 
-1. Ouvrir **Connections → Add connection**
-2. Renseigner :
+1. Ouvrir l'onglet **Configuration**
+2. Renseigner (valeurs par défaut déjà configurées) :
 
 | Champ | Valeur |
 |------|-------|
-| Name | Local Cassandra |
-| Host | cassandra |
+| Hosts | cassandra |
 | Port | 9042 |
-| Auth | None |
-| Datacenter | dc1 |
+| Username | (vide) |
+| Password | (vide) |
+| Keyspace | (optionnel) |
 
 3. **Test Connection**
 4. **Save**
@@ -142,9 +149,10 @@ docker compose down -v
 
 ## 🧠 Notes importantes
 
-- DataStax Studio 6.x est **EOL (End Of Life)**
-- L’image est exécutée en **linux/amd64** pour compatibilité Apple Silicon
-- Usage recommandé : **formation, exploration, legacy**
+- L'application web est construite avec **FastAPI** et utilise le driver Python Cassandra
+- L'interface permet l'exécution de requêtes CQL multiples (séparées par des points-virgules)
+- Les résultats des SELECT sont affichés dans des tableaux HTML
+- Navigation possible dans les keyspaces et tables via l'interface
 
 ---
 
@@ -159,7 +167,7 @@ docker compose down -v
 
 ## 📜 Licence
 
-L’utilisation de DataStax Studio est soumise aux conditions de licence DataStax.
+L'utilisation d'Apache Cassandra est soumise aux conditions de licence Apache 2.0.
 
 ---
 
