@@ -54,6 +54,16 @@ services:
       - ./cql-scripts:/app/cql-scripts
     networks:
       - cassandra-net
-
+  jupyter:
+    image: jupyter/base-notebook
+    ports:
+      - 8888:8888
+    volumes:
+      - ./jupyter-data:/home/jovyan/work
+    command: start-notebook.py --NotebookApp.token='my-token'
+    networks:
+      - cassandra-net
 volumes:
+  jupyter-data:
+    name: jupyter-data
   cassandra_data:

@@ -289,6 +289,88 @@
     .btn-danger:hover {
       background: #c0392b;
     }
+    /* Query Tabs Styles */
+    .query-tabs-container {
+      margin-bottom: 15px;
+    }
+    .query-tabs-header {
+      display: flex;
+      align-items: center;
+      border-bottom: 1px solid #ccc;
+      margin-bottom: 10px;
+    }
+    .query-tabs {
+      display: flex;
+      flex: 1;
+      overflow-x: auto;
+    }
+    .query-tab {
+      display: flex;
+      align-items: center;
+      padding: 8px 12px;
+      cursor: pointer;
+      border: 1px solid transparent;
+      border-bottom: none;
+      background: #ecf0f1;
+      margin-right: 2px;
+      min-width: 100px;
+      position: relative;
+    }
+    .query-tab.active {
+      border-color: #ccc;
+      background: #ffffff;
+      border-top-left-radius: 4px;
+      border-top-right-radius: 4px;
+    }
+    .query-tab-title {
+      flex: 1;
+      font-size: 13px;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+    .query-tab-close {
+      margin-left: 8px;
+      color: #999;
+      cursor: pointer;
+      font-size: 16px;
+      line-height: 1;
+      padding: 0 4px;
+    }
+    .query-tab-close:hover {
+      color: #e74c3c;
+    }
+    .query-tab-content {
+      display: none;
+    }
+    .query-tab-content.active {
+      display: block;
+    }
+    .file-input-wrapper {
+      position: relative;
+      display: inline-block;
+    }
+    .file-input-label {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: #95a5a6;
+      color: white;
+      border-radius: 4px;
+      cursor: pointer;
+      font-size: 12px;
+      font-weight: bold;
+    }
+    .file-input-label:hover {
+      background: #7f8c8d;
+    }
+    .file-input-wrapper input[type="file"] {
+      position: absolute;
+      opacity: 0;
+      width: 0;
+      height: 0;
+    }
     .batch-result {
       margin-bottom: 15px;
       padding: 10px;
@@ -507,97 +589,36 @@
   </div>
 
   <div id="tab-editor" class="tab-content" style="display: none;">
-    <div class="editor-layout">
-      <div class="editor-main">
-        <section class="editor-container">
-          <div class="editor-controls">
-            <label for="cql" style="flex: 1;">Requête(s) CQL (séparées par des points-virgules, commentaires avec -- ou /* */) :</label>
-            <div class="font-size-control">
-              <label for="fontSize">Taille :</label>
-              <input type="range" id="fontSize" min="10" max="20" value="14" step="1" />
-              <span class="font-size-display" id="fontSizeDisplay">14px</span>
-            </div>
+    <!-- Query Tabs -->
+    <div class="query-tabs-container">
+      <div class="query-tabs-header">
+        <div class="query-tabs">
+          <div class="query-tab active" data-query-tab="0">
+            <span class="query-tab-title">Query 1</span>
+            <span class="query-tab-close" onclick="closeQueryTab(0, event)">×</span>
           </div>
-          <div class="editor-wrapper">
-            <textarea id="cql" placeholder="Exemple : SELECT * FROM system.local;&#10;SELECT * FROM system.peers;&#10;&#10;Astuce : Sélectionnez une requête ou placez le curseur sur une requête pour l'exécuter seule.&#10;Les commentaires (-- et /* */) sont automatiquement ignorés."></textarea>
-          </div>
-          <div id="queryPreview" class="status info" style="display: none; margin-top: 5px; font-size: 12px; font-style: italic;"></div>
-          <div class="query-actions">
-            <button id="runBtn"><i class="fas fa-play icon"></i>Exécuter (sélection/cursor)</button>
-            <button id="runAllBtn" class="btn-secondary"><i class="fas fa-forward icon"></i>Exécuter tout</button>
-            <div class="file-input-wrapper">
-              <input type="file" id="importFile" accept=".cql,.sql,.txt" />
-              <label for="importFile" class="file-input-label">
-                <i class="fas fa-file-import"></i>Importer CQL
-              </label>
-            </div>
-            <div class="query-input-group">
-              <input type="text" id="queryName" placeholder="Nom de la requête..." />
-              <button id="saveQueryBtn" class="btn-secondary btn-small"><i class="fas fa-save icon"></i>Sauvegarder</button>
-            </div>
-          </div>
-          <div id="status" class="status"></div>
-        </section>
-
-        <section class="saved-queries">
-          <h3>Requêtes sauvegardées</h3>
-          <div id="savedQueriesList" class="saved-queries-list">
-            <div class="results-empty">Aucune requête sauvegardée.</div>
-          </div>
-        </section>
-
-        <section>
-          <h2>Résultats</h2>
-          <div id="results" class="results-container">
-            <div class="results-empty">Aucun résultat pour l'instant.</div>
-          </div>
-        </section>
+        </div>
+        <button id="addQueryTabBtn" class="btn-secondary btn-small" title="Nouvel onglet">
+          <i class="fas fa-plus"></i>
+        </button>
       </div>
-
-      <aside class="sidebar">
-        <div class="sidebar-section">
-          <div class="sidebar-header">
-            <h3><i class="fas fa-server icon"></i>Statut serveur</h3>
-            <button id="refreshStatusBtn" class="btn-secondary btn-small"><i class="fas fa-sync-alt icon"></i>Rafraîchir</button>
-          </div>
-          <div id="serverStatus" class="sidebar-body meta-empty"><i class="fas fa-times-circle icon icon-error"></i>Non connecté.</div>
-        </div>
-
-        <div class="sidebar-section">
-          <div class="sidebar-header">
-            <h3><i class="fas fa-database icon"></i>Keyspaces</h3>
-            <button id="refreshMetaBtn" class="btn-secondary btn-small"><i class="fas fa-sync-alt icon"></i>Rafraîchir</button>
-          </div>
-          <div id="keyspaceList" class="meta-list">
-            <div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucun keyspace chargé.</div>
-          </div>
-        </div>
-
-        <div class="sidebar-section">
-          <div class="sidebar-header">
-            <h3><i class="fas fa-table icon"></i>Tables</h3>
-          </div>
-          <div id="tableList" class="meta-list">
-            <div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucune table.</div>
-          </div>
-        </div>
-
-        <div class="sidebar-section">
-          <div class="sidebar-header">
-            <h3><i class="fas fa-info-circle icon"></i>Détails</h3>
-          </div>
-          <div id="tableDetails" class="sidebar-body meta-empty"><i class="fas fa-mouse-pointer icon"></i>Sélectionnez une table.</div>
-        </div>
-      </aside>
     </div>
+
   </div>
 </main>
 
 <script>
+  // Global variables
   const tabs = document.querySelectorAll('.tab');
   const tabConfig = document.getElementById('tab-config');
   const tabEditor = document.getElementById('tab-editor');
 
+  // Query tabs management
+  let queryTabs = [];
+  let activeQueryTab = 0;
+  let tabCounter = 1;
+
+  // Main tab switching (Config/Editor)
   tabs.forEach(tab => {
     tab.addEventListener('click', () => {
       tabs.forEach(t => t.classList.remove('active'));
@@ -613,6 +634,7 @@
     });
   });
 
+  // Configuration elements
   const hostsInput = document.getElementById('hosts');
   const portInput = document.getElementById('port');
   const usernameInput = document.getElementById('username');
@@ -621,35 +643,189 @@
   const saveConfigBtn = document.getElementById('saveConfigBtn');
   const configStatus = document.getElementById('configStatus');
 
-  const runBtn = document.getElementById('runBtn');
-  const cqlTextarea = document.getElementById('cql');
-  const statusDiv = document.getElementById('status');
-  const resultsDiv = document.getElementById('results');
-  const saveQueryBtn = document.getElementById('saveQueryBtn');
-  const queryNameInput = document.getElementById('queryName');
-  const savedQueriesList = document.getElementById('savedQueriesList');
-  const queryPreview = document.getElementById('queryPreview');
-  const fontSizeControl = document.getElementById('fontSize');
-  const fontSizeDisplay = document.getElementById('fontSizeDisplay');
-  const serverStatusDiv = document.getElementById('serverStatus');
-  const keyspaceListDiv = document.getElementById('keyspaceList');
-  const tableListDiv = document.getElementById('tableList');
-  const tableDetailsDiv = document.getElementById('tableDetails');
-  const refreshStatusBtn = document.getElementById('refreshStatusBtn');
-  const refreshMetaBtn = document.getElementById('refreshMetaBtn');
+  // Sidebar elements (will be accessed per tab)
+  // const serverStatusDiv = document.getElementById('serverStatus');
+  // const keyspaceListDiv = document.getElementById('keyspaceList');
+  // const tableListDiv = document.getElementById('tableList');
+  // const tableDetailsDiv = document.getElementById('tableDetails');
+  // const refreshStatusBtn = document.getElementById('refreshStatusBtn');
+  // const refreshMetaBtn = document.getElementById('refreshMetaBtn');
 
   let selectedKeyspace = null;
   let selectedTable = null;
 
-  // Initialiser CodeMirror
-  let codeEditor = null;
-  
-  function initCodeEditor() {
-    codeEditor = CodeMirror.fromTextArea(cqlTextarea, {
+  // Initialize the application
+  document.addEventListener('DOMContentLoaded', function() {
+    loadConfig();
+    initEventListeners();
+  });
+
+  // Initialize query tabs system
+  function initQueryTabs() {
+    queryTabs = [{
+      id: 0,
+      title: 'Query 1',
+      editor: null,
+      content: ''
+    }];
+    createQueryTabElement(0);
+
+    // Add click event listener to the static tab 0
+    const staticTab = document.querySelector('.query-tab[data-query-tab="0"]');
+    if (staticTab) {
+      staticTab.addEventListener('click', () => switchToQueryTab(0));
+    }
+
+    switchToQueryTab(0);
+  }
+
+  // Create a query tab element
+  function createQueryTabElement(tabId) {
+    const tab = queryTabs.find(t => t.id === tabId);
+    if (!tab) return;
+
+    const tabsContainer = document.querySelector('.query-tabs');
+    if (!tabsContainer) return;
+    let tabElement = document.querySelector(`.query-tab[data-query-tab="${tabId}"]`);
+
+    if (!tabElement) {
+      // Create tab element if it doesn't exist
+      tabElement = document.createElement('div');
+      tabElement.className = 'query-tab';
+      tabElement.setAttribute('data-query-tab', tabId);
+      tabElement.innerHTML = `
+        <span class="query-tab-title">${tab.title}</span>
+        <span class="query-tab-close" onclick="closeQueryTab(${tabId}, event)">×</span>
+      `;
+      tabElement.addEventListener('click', () => switchToQueryTab(tabId));
+      tabsContainer.appendChild(tabElement);
+    }
+
+    // Check if content already exists
+    let contentElement = document.querySelector(`.query-tab-content[data-query-tab="${tabId}"]`);
+    if (!contentElement) {
+      // Create tab content if it doesn't exist
+      contentElement = document.createElement('div');
+      contentElement.className = 'query-tab-content';
+      contentElement.setAttribute('data-query-tab', tabId);
+      contentElement.innerHTML = `
+        <div class="editor-layout">
+          <div class="editor-main">
+            <section class="editor-container">
+              <div class="editor-controls">
+                <label for="cql-${tabId}" style="flex: 1;">Requête(s) CQL (séparées par des points-virgules, commentaires avec -- ou /* */) :</label>
+                <div class="font-size-control">
+                  <label for="fontSize-${tabId}">Taille :</label>
+                  <input type="range" id="fontSize-${tabId}" min="10" max="20" value="14" step="1" />
+                  <span class="font-size-display" id="fontSizeDisplay-${tabId}">14px</span>
+                </div>
+              </div>
+              <div class="editor-wrapper">
+                <textarea id="cql-${tabId}" placeholder="Exemple : SELECT * FROM system.local;&#10;SELECT * FROM system.peers;&#10;&#10;Astuce : Sélectionnez une requête ou placez le curseur sur une requête pour l'exécuter seule.&#10;Les commentaires (-- et /* */) sont automatiquement ignorés.">${tab.content}</textarea>
+              </div>
+              <div id="queryPreview-${tabId}" class="status info" style="display: none; margin-top: 5px; font-size: 12px; font-style: italic;"></div>
+              <div class="query-actions">
+                <button id="runBtn-${tabId}" onclick="executeQuery(${tabId})"><i class="fas fa-play icon"></i>Exécuter (sélection/cursor)</button>
+                <button id="runAllBtn-${tabId}" onclick="executeAllQueries(${tabId})" class="btn-secondary"><i class="fas fa-forward icon"></i>Exécuter tout</button>
+                <div class="file-input-wrapper">
+                  <input type="file" id="importFile-${tabId}" accept=".cql,.sql,.txt" onchange="importFile(${tabId})" />
+                  <label for="importFile-${tabId}" class="file-input-label">
+                    <i class="fas fa-file-import"></i>Importer CQL
+                  </label>
+                </div>
+                <div class="query-input-group">
+                  <input type="text" id="queryName-${tabId}" placeholder="Nom de la requête..." />
+                  <button id="saveQueryBtn-${tabId}" onclick="saveCurrentQuery(${tabId})" class="btn-secondary btn-small"><i class="fas fa-save icon"></i>Sauvegarder</button>
+                </div>
+              </div>
+              <div id="status-${tabId}" class="status"></div>
+            </section>
+
+            <section class="saved-queries">
+              <h3>Requêtes sauvegardées</h3>
+              <div id="savedQueriesList-${tabId}" class="saved-queries-list">
+                <div class="results-empty">Aucune requête sauvegardée.</div>
+              </div>
+            </section>
+
+            <section>
+              <h2>Résultats</h2>
+              <div id="results-${tabId}" class="results-container">
+                <div class="results-empty">Aucun résultat pour l'instant.</div>
+              </div>
+            </section>
+          </div>
+
+          <aside class="sidebar">
+            <div class="sidebar-section">
+              <div class="sidebar-header">
+                <h3><i class="fas fa-server icon"></i>Statut serveur</h3>
+                <button id="refreshStatusBtn-${tabId}" class="btn-secondary btn-small"><i class="fas fa-sync-alt icon"></i>Rafraîchir</button>
+              </div>
+              <div id="serverStatus-${tabId}" class="sidebar-body meta-empty"><i class="fas fa-times-circle icon icon-error"></i>Non connecté.</div>
+            </div>
+
+            <div class="sidebar-section">
+              <div class="sidebar-header">
+                <h3><i class="fas fa-database icon"></i>Keyspaces</h3>
+                <button id="refreshMetaBtn-${tabId}" class="btn-secondary btn-small"><i class="fas fa-sync-alt icon"></i>Rafraîchir</button>
+              </div>
+              <div id="keyspaceList-${tabId}" class="meta-list">
+                <div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucun keyspace chargé.</div>
+              </div>
+            </div>
+
+            <div class="sidebar-section">
+              <div class="sidebar-header">
+                <h3><i class="fas fa-table icon"></i>Tables</h3>
+              </div>
+              <div id="tableList-${tabId}" class="meta-list">
+                <div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucune table.</div>
+              </div>
+            </div>
+
+            <div class="sidebar-section">
+              <div class="sidebar-header">
+                <h3><i class="fas fa-info-circle icon"></i>Détails</h3>
+              </div>
+              <div id="tableDetails-${tabId}" class="sidebar-body meta-empty"><i class="fas fa-mouse-pointer icon"></i>Sélectionnez une table.</div>
+            </div>
+          </aside>
+        </div>
+      `;
+
+      const tabsContainerDiv = document.querySelector('.query-tabs-container');
+      if (!tabsContainerDiv) return;
+      tabsContainerDiv.appendChild(contentElement);
+    }
+
+    // Initialize CodeMirror for this tab
+    initCodeEditorForTab(tabId);
+
+    // Set up event listeners for tab-specific buttons
+    const refreshStatusBtn = document.getElementById(`refreshStatusBtn-${tabId}`);
+    const refreshMetaBtn = document.getElementById(`refreshMetaBtn-${tabId}`);
+    if (refreshStatusBtn) {
+      refreshStatusBtn.addEventListener('click', () => loadStatus(tabId));
+    }
+    if (refreshMetaBtn) {
+      refreshMetaBtn.addEventListener('click', () => refreshMetadata(tabId));
+    }
+
+    loadSavedQueries(tabId);
+  }
+
+  // Initialize CodeMirror for a specific tab
+  function initCodeEditorForTab(tabId) {
+    const textarea = document.getElementById(`cql-${tabId}`);
+    const tab = queryTabs.find(t => t.id === tabId);
+    if (!textarea || !tab) return;
+    if (tab.editor) return;
+
+    const editor = CodeMirror.fromTextArea(textarea, {
       mode: {
         name: 'sql',
         keywords: {
-          // Mots-clés CQL/Cassandra additionnels
           all: true, alter: true, and: true, any: true, as: true, asc: true,
           authorize: true, batch: true, begin: true, by: true, called: true,
           cluster: true, columnfamily: true, compact: true, consistency: true,
@@ -675,71 +851,181 @@
       autoCloseBrackets: true,
       styleActiveLine: true,
       extraKeys: {
-        "Ctrl-Enter": function() { executeQuery(); },
-        "Cmd-Enter": function() { executeQuery(); }
+        "Ctrl-Enter": function() { executeQuery(tabId); },
+        "Cmd-Enter": function() { executeQuery(tabId); }
       }
     });
 
-    // Mettre à jour la taille de police
-    fontSizeControl.addEventListener('input', function() {
-      const size = this.value;
-      fontSizeDisplay.textContent = size + 'px';
-      codeEditor.getWrapperElement().style.fontSize = size + 'px';
-      codeEditor.refresh();
+    tab.editor = editor;
+
+    // Font size control
+    const fontSizeControl = document.getElementById(`fontSize-${tabId}`);
+    const fontSizeDisplay = document.getElementById(`fontSizeDisplay-${tabId}`);
+
+    if (fontSizeControl && fontSizeDisplay) {
+      fontSizeControl.addEventListener('input', function() {
+        const size = this.value;
+        fontSizeDisplay.textContent = size + 'px';
+        editor.getWrapperElement().style.fontSize = size + 'px';
+        editor.refresh();
+      });
+
+      editor.getWrapperElement().style.fontSize = fontSizeControl.value + 'px';
+    }
+
+    // Query preview
+    editor.on('cursorActivity', () => updateQueryPreview(tabId));
+    editor.on('change', () => updateQueryPreview(tabId));
+  }
+
+  // Switch to a query tab
+  function switchToQueryTab(tabId) {
+    // Update tab appearance
+    document.querySelectorAll('.query-tab').forEach(tab => {
+      tab.classList.remove('active');
+    });
+    const tabEl = document.querySelector(`.query-tab[data-query-tab="${tabId}"]`);
+    if (tabEl) tabEl.classList.add('active');
+
+    // Update content visibility
+    document.querySelectorAll('.query-tab-content').forEach(content => {
+      content.classList.remove('active');
+    });
+    const contentEl = document.querySelector(`.query-tab-content[data-query-tab="${tabId}"]`);
+    if (contentEl) contentEl.classList.add('active');
+
+    activeQueryTab = tabId;
+
+    const tab = queryTabs.find(t => t.id === tabId);
+    if (tab && tab.editor) {
+      try {
+        tab.editor.refresh();
+      } catch (e) {
+        console.error(e);
+      }
+    }
+  }
+
+  // Add a new query tab
+  function addQueryTab() {
+    const newTabId = tabCounter++;
+    const newTitle = `Query ${newTabId + 1}`;
+    
+    queryTabs.push({
+      id: newTabId,
+      title: newTitle,
+      editor: null,
+      content: ''
     });
 
-    // Initialiser la taille
-    codeEditor.getWrapperElement().style.fontSize = fontSizeControl.value + 'px';
-    
-    // Mettre à jour l'aperçu lors des changements
-    codeEditor.on('cursorActivity', updateQueryPreview);
-    codeEditor.on('change', updateQueryPreview);
+    createQueryTabElement(newTabId);
+    switchToQueryTab(newTabId);
+
+    // Load sidebar data for the new tab
+    loadStatus(newTabId);
+    loadKeyspaces(newTabId);
   }
 
-  // Fonction pour obtenir la valeur de l'éditeur
-  function getEditorValue() {
-    return codeEditor ? codeEditor.getValue() : cqlTextarea.value;
+  // Close a query tab
+  function closeQueryTab(tabId, event) {
+    if (event) event.stopPropagation();
+
+    if (queryTabs.length <= 1) {
+      alert('Vous ne pouvez pas fermer le dernier onglet.');
+      return;
+    }
+
+    // Remove tab from array
+    const tabIndex = queryTabs.findIndex(t => t.id === tabId);
+    if (tabIndex === -1) return;
+
+    const closedTab = queryTabs[tabIndex];
+    queryTabs.splice(tabIndex, 1);
+
+    if (closedTab && closedTab.editor) {
+      try {
+        closedTab.editor.toTextArea();
+        closedTab.editor = null;
+      } catch (e) {
+        console.error(e);
+      }
+    }
+
+    // Remove DOM elements
+    const tabEl = document.querySelector(`.query-tab[data-query-tab="${tabId}"]`);
+    if (tabEl) tabEl.remove();
+    const contentEl = document.querySelector(`.query-tab-content[data-query-tab="${tabId}"]`);
+    if (contentEl) contentEl.remove();
+
+    // Switch to another tab
+    if (activeQueryTab === tabId) {
+      const remainingTab = queryTabs[0];
+      if (remainingTab) {
+        switchToQueryTab(remainingTab.id);
+      }
+    }
   }
 
-  // Fonction pour définir la valeur de l'éditeur
-  function setEditorValue(value) {
-    if (codeEditor) {
-      codeEditor.setValue(value);
+  // Initialize event listeners
+  function initEventListeners() {
+    // Add query tab button
+    const addQueryTabBtn = document.getElementById('addQueryTabBtn');
+    if (addQueryTabBtn) {
+      addQueryTabBtn.addEventListener('click', addQueryTab);
+    }
+
+    // Configuration
+    if (saveConfigBtn) saveConfigBtn.addEventListener('click', saveConfig);
+
+    // Global sidebar buttons are now handled per-tab
+  }
+
+  // Fonction pour obtenir la valeur de l'éditeur d'un onglet
+  function getEditorValue(tabId) {
+    const tab = queryTabs.find(t => t.id === tabId);
+    if (tab && tab.editor) return tab.editor.getValue();
+    const textarea = document.getElementById(`cql-${tabId}`);
+    return textarea ? textarea.value : '';
+  }
+
+  // Fonction pour définir la valeur de l'éditeur d'un onglet
+  function setEditorValue(tabId, value) {
+    const tab = queryTabs.find(t => t.id === tabId);
+    if (tab && tab.editor) {
+      tab.editor.setValue(value);
     } else {
-      cqlTextarea.value = value;
+      const textarea = document.getElementById(`cql-${tabId}`);
+      if (textarea) textarea.value = value;
     }
   }
 
   // Fonction pour obtenir la sélection ou la position du curseur dans CodeMirror
-  function getEditorSelection() {
-    if (!codeEditor) {
-      return { start: cqlTextarea.selectionStart, end: cqlTextarea.selectionEnd };
+  function getEditorSelection(tabId) {
+    const tab = queryTabs.find(t => t.id === tabId);
+    if (!tab || !tab.editor) {
+      const textarea = document.getElementById(`cql-${tabId}`);
+      if (!textarea) return { start: 0, end: 0 };
+      return { start: textarea.selectionStart, end: textarea.selectionEnd };
     }
-    const selection = codeEditor.getSelection();
+    const selection = tab.editor.getSelection();
     if (selection) {
-      return { start: codeEditor.getCursor('start'), end: codeEditor.getCursor('end'), text: selection };
+      return { start: tab.editor.getCursor('start'), end: tab.editor.getCursor('end'), text: selection };
     }
-    return { start: codeEditor.getCursor(), end: codeEditor.getCursor(), text: null };
+    return { start: tab.editor.getCursor(), end: tab.editor.getCursor(), text: null };
   }
 
   // Afficher un aperçu de la requête qui sera exécutée
-  function updateQueryPreview() {
-    const query = getQueryAtCursor();
-    if (!queryPreview) return;
+  function updateQueryPreview(tabId) {
+    const query = getQueryAtCursor(tabId);
+    const previewDiv = document.getElementById(`queryPreview-${tabId}`);
+    if (!previewDiv) return;
     if (query && query.length > 0) {
       const preview = query.length > 100 ? query.substring(0, 100) + '...' : query;
-      queryPreview.textContent = 'Requête à exécuter : ' + preview.replace(/\n/g, ' ');
-      queryPreview.style.display = 'block';
+      previewDiv.textContent = 'Requête à exécuter : ' + preview.replace(/\n/g, ' ');
+      previewDiv.style.display = 'block';
     } else {
-      queryPreview.style.display = 'none';
+      previewDiv.style.display = 'none';
     }
-  }
-
-  // Mettre à jour l'aperçu (CodeMirror gère ses propres événements)
-  if (!codeEditor) {
-    cqlTextarea.addEventListener('mouseup', updateQueryPreview);
-    cqlTextarea.addEventListener('keyup', updateQueryPreview);
-    cqlTextarea.addEventListener('selectionchange', updateQueryPreview);
   }
 
   // Helpers de requêtes API
@@ -753,7 +1039,10 @@
   }
 
   // ---- Métadonnées (statut, keyspaces, tables) ----
-  function renderServerStatus(data) {
+  function renderServerStatus(data, tabId = activeQueryTab) {
+    const serverStatusDiv = document.getElementById(`serverStatus-${tabId}`);
+    if (!serverStatusDiv) return;
+
     if (!data || !data.connected) {
       serverStatusDiv.innerHTML = '<div class="meta-empty"><i class="fas fa-times-circle icon icon-error"></i>Non connecté.</div>';
       return;
@@ -767,7 +1056,10 @@
     `;
   }
 
-  function renderKeyspaces(list) {
+  function renderKeyspaces(list, tabId = activeQueryTab) {
+    const keyspaceListDiv = document.getElementById(`keyspaceList-${tabId}`);
+    if (!keyspaceListDiv) return;
+
     if (!list || list.length === 0) {
       keyspaceListDiv.innerHTML = '<div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucun keyspace.</div>';
       return;
@@ -777,12 +1069,16 @@
       const div = document.createElement('div');
       div.className = 'meta-item' + (ks === selectedKeyspace ? ' active' : '');
       div.innerHTML = `<i class="fas fa-database icon"></i><span>${ks}</span>`;
-      div.addEventListener('click', () => loadTables(ks));
+      div.addEventListener('click', () => loadTables(ks, tabId));
       keyspaceListDiv.appendChild(div);
     });
   }
 
-  function renderTables(tables) {
+  function renderTables(tables, tabId = activeQueryTab) {
+    const tableListDiv = document.getElementById(`tableList-${tabId}`);
+    const tableDetailsDiv = document.getElementById(`tableDetails-${tabId}`);
+    if (!tableListDiv || !tableDetailsDiv) return;
+
     if (!tables || tables.length === 0) {
       tableListDiv.innerHTML = '<div class="meta-empty"><i class="fas fa-info-circle icon"></i>Aucune table.</div>';
       tableDetailsDiv.innerHTML = '<i class="fas fa-mouse-pointer icon"></i>Sélectionnez une table.';
@@ -797,12 +1093,15 @@
         <div class="meta-item-title"><i class="fas fa-table icon"></i>${table.name}</div>
         <div class="meta-item-sub"><i class="fas fa-columns icon"></i>${table.columns.length} colonne(s)</div>
       `;
-      div.addEventListener('click', () => renderTableDetails(table));
+      div.addEventListener('click', () => renderTableDetails(table, tabId));
       tableListDiv.appendChild(div);
     });
   }
 
-  function renderTableDetails(table) {
+  function renderTableDetails(table, tabId = activeQueryTab) {
+    const tableDetailsDiv = document.getElementById(`tableDetails-${tabId}`);
+    if (!tableDetailsDiv) return;
+
     if (!table) {
       tableDetailsDiv.innerHTML = '<i class="fas fa-mouse-pointer icon"></i>Sélectionnez une table.';
       return;
@@ -826,68 +1125,90 @@
       <div style="margin-top:8px; margin-bottom:4px;"><strong><i class="fas fa-list icon"></i>Colonnes :</strong></div>
       <div style="margin-top:4px;">${cols || '<div class="meta-empty">Aucune colonne</div>'}</div>
     `;
-    document.querySelectorAll('#tableList .meta-item').forEach((el) => {
+    document.querySelectorAll(`#tableList-${tabId} .meta-item`).forEach((el) => {
       const nameEl = el.querySelector('.meta-item-title');
       el.classList.toggle('active', nameEl && nameEl.textContent && nameEl.textContent.includes(table.name));
     });
   }
 
-  async function loadStatus() {
+  async function loadStatus(tabId = activeQueryTab) {
     try {
       const data = await fetchJson('/api/status');
-      renderServerStatus(data);
+      renderServerStatus(data, tabId);
     } catch (e) {
-      serverStatusDiv.innerHTML = `<div class="meta-empty">Erreur: ${e.message}</div>`;
+      const serverStatusDiv = document.getElementById(`serverStatus-${tabId}`);
+      if (serverStatusDiv) {
+        serverStatusDiv.innerHTML = `<div class="meta-empty">Erreur: ${e.message}</div>`;
+      }
     }
   }
 
-  async function loadKeyspaces() {
+  async function loadKeyspaces(tabId = activeQueryTab) {
     try {
       const data = await fetchJson('/api/keyspaces');
       const ksList = data.keyspaces || [];
-      renderKeyspaces(ksList);
+      renderKeyspaces(ksList, tabId);
       if (selectedKeyspace && !ksList.includes(selectedKeyspace)) {
         selectedKeyspace = null;
-        renderTables([]);
+        renderTables([], tabId);
       }
       if (!selectedKeyspace && ksList.length > 0) {
-        loadTables(ksList[0]);
+        loadTables(ksList[0], tabId);
       }
     } catch (e) {
-      keyspaceListDiv.innerHTML = `<div class="meta-empty">Erreur: ${e.message}</div>`;
+      const keyspaceListDiv = document.getElementById(`keyspaceList-${tabId}`);
+      if (keyspaceListDiv) {
+        keyspaceListDiv.innerHTML = `<div class="meta-empty">Erreur: ${e.message}</div>`;
+      }
     }
   }
 
-  async function loadTables(keyspace) {
+  async function loadTables(keyspace, tabId = activeQueryTab) {
     selectedKeyspace = keyspace;
     selectedTable = null;
-    document.querySelectorAll('#keyspaceList .meta-item').forEach((el) => {
+    document.querySelectorAll(`#keyspaceList-${tabId} .meta-item`).forEach((el) => {
       el.classList.toggle('active', el.textContent === keyspace);
     });
 
     try {
       const data = await fetchJson(`/api/keyspaces/${encodeURIComponent(keyspace)}/tables`);
-      renderTables(data.tables || []);
-      tableDetailsDiv.innerHTML = 'Sélectionnez une table.';
+      renderTables(data.tables || [], tabId);
+      const tableDetailsDiv = document.getElementById(`tableDetails-${tabId}`);
+      if (tableDetailsDiv) {
+        tableDetailsDiv.innerHTML = 'Sélectionnez une table.';
+      }
     } catch (e) {
-      tableListDiv.innerHTML = `<div class="meta-empty">Erreur: ${e.message}</div>`;
-      tableDetailsDiv.innerHTML = 'Sélectionnez une table.';
+      const tableListDiv = document.getElementById(`tableList-${tabId}`);
+      const tableDetailsDiv = document.getElementById(`tableDetails-${tabId}`);
+      if (tableListDiv) {
+        tableListDiv.innerHTML = `<div class="meta-empty">Erreur: ${e.message}</div>`;
+      }
+      if (tableDetailsDiv) {
+        tableDetailsDiv.innerHTML = 'Sélectionnez une table.';
+      }
     }
   }
 
-  refreshStatusBtn.addEventListener('click', loadStatus);
-  refreshMetaBtn.addEventListener('click', () => {
-    loadStatus();
-    loadKeyspaces();
-  });
+  async function refreshMetadata(tabId = activeQueryTab) {
+    await loadStatus(tabId);
+    await loadKeyspaces(tabId);
+  }
 
   // Gestion des requêtes sauvegardées
-  const STORAGE_KEY = 'cql_saved_queries';
+  const STORAGE_KEY = 'cassandra_queries';
 
   function getSavedQueries() {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : {};
+      const stored = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('cql_saved_queries');
+      const parsed = stored ? JSON.parse(stored) : {};
+      if (!localStorage.getItem(STORAGE_KEY) && stored) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        } catch (e) {
+          console.error('Erreur lors de la sauvegarde:', e);
+        }
+      }
+      return parsed;
     } catch (e) {
       return {};
     }
@@ -901,97 +1222,10 @@
     }
   }
 
-  function loadSavedQueries() {
-    const queries = getSavedQueries();
-    const keys = Object.keys(queries);
-    
-    if (keys.length === 0) {
-      savedQueriesList.innerHTML = '<div class="results-empty">Aucune requête sauvegardée.</div>';
-      return;
-    }
-
-    let html = '';
-    for (const name of keys.sort()) {
-      const query = queries[name];
-      const preview = query.length > 50 ? query.substring(0, 50) + '...' : query;
-      html += `
-        <div class="saved-query-item" data-name="${name}">
-          <div class="saved-query-name"><i class="fas fa-file-code icon"></i>${name}</div>
-          <div class="saved-query-preview">${preview.replace(/</g, '&lt;').replace(/>/g, '&gt;')}</div>
-          <div class="saved-query-actions">
-            <button class="btn-secondary btn-small load-query-btn" data-name="${name}"><i class="fas fa-upload icon"></i>Charger</button>
-            <button class="btn-danger btn-small delete-query-btn" data-name="${name}"><i class="fas fa-trash icon"></i>Supprimer</button>
-          </div>
-        </div>
-      `;
-    }
-    savedQueriesList.innerHTML = html;
-
-    // Ajouter les event listeners
-    document.querySelectorAll('.load-query-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const name = btn.getAttribute('data-name') || e.target.closest('.load-query-btn')?.getAttribute('data-name');
-        if (name) loadQuery(name);
-      });
+  function loadSavedQueriesAllTabs() {
+    queryTabs.forEach(tab => {
+      loadSavedQueries(tab.id);
     });
-
-    document.querySelectorAll('.delete-query-btn').forEach(btn => {
-      btn.addEventListener('click', (e) => {
-        const name = btn.getAttribute('data-name') || e.target.closest('.delete-query-btn')?.getAttribute('data-name');
-        if (name) deleteQuery(name);
-      });
-    });
-  }
-
-  function saveQuery() {
-    const query = getEditorValue().trim();
-    const name = queryNameInput.value.trim();
-
-    if (!query) {
-      alert('Veuillez saisir une requête à sauvegarder.');
-      return;
-    }
-
-    if (!name) {
-      alert('Veuillez donner un nom à cette requête.');
-      return;
-    }
-
-    const queries = getSavedQueries();
-    queries[name] = query;
-    saveQueries(queries);
-    loadSavedQueries();
-    queryNameInput.value = '';
-    
-    statusDiv.textContent = `Requête "${name}" sauvegardée.`;
-    statusDiv.className = 'status success';
-  }
-
-  function loadQuery(name) {
-    const queries = getSavedQueries();
-    if (queries[name]) {
-      setEditorValue(queries[name]);
-      queryNameInput.value = name;
-      statusDiv.textContent = `Requête "${name}" chargée.`;
-      statusDiv.className = 'status success';
-      if (codeEditor) {
-        codeEditor.refresh();
-      }
-    }
-  }
-
-  function deleteQuery(name) {
-    if (!confirm(`Supprimer la requête "${name}" ?`)) {
-      return;
-    }
-
-    const queries = getSavedQueries();
-    delete queries[name];
-    saveQueries(queries);
-    loadSavedQueries();
-    
-    statusDiv.textContent = `Requête "${name}" supprimée.`;
-    statusDiv.className = 'status info';
   }
 
   async function loadConfig() {
@@ -1054,25 +1288,27 @@
     }
   }
 
-  function getQueryAtCursor() {
-    const text = getEditorValue();
-    
-    if (codeEditor) {
+  // Obtenir la requête à la position du curseur
+  function getQueryAtCursor(tabId) {
+    const text = getEditorValue(tabId);
+    const tab = queryTabs.find(t => t.id === tabId);
+
+    if (tab && tab.editor) {
       // Vérifier d'abord si du texte est sélectionné
-      const selection = codeEditor.getSelection();
+      const selection = tab.editor.getSelection();
       if (selection && selection.trim().length > 0) {
         return selection.trim();
       }
-      
+
       // Sinon, trouver la requête à la position du curseur
-      const cursor = codeEditor.getCursor();
-      const cursorPos = codeEditor.indexFromPos(cursor);
-      
+      const cursor = tab.editor.getCursor();
+      const cursorPos = tab.editor.indexFromPos(cursor);
+
       // Chercher le point-virgule précédent
       let queryStart = 0;
       let in_string = false;
       let string_char = null;
-      
+
       for (let i = cursorPos - 1; i >= 0; i--) {
         const char = text[i];
         if ((char === "'" || char === '"') && (i === 0 || text[i-1] !== '\\')) {
@@ -1089,12 +1325,12 @@
           break;
         }
       }
-      
+
       // Chercher le point-virgule suivant
       let queryEnd = text.length;
       in_string = false;
       string_char = null;
-      
+
       for (let i = cursorPos; i < text.length; i++) {
         const char = text[i];
         if ((char === "'" || char === '"') && (i === 0 || text[i-1] !== '\\')) {
@@ -1111,12 +1347,14 @@
           break;
         }
       }
-      
+
       return text.substring(queryStart, queryEnd).trim();
     } else {
       // Fallback pour textarea classique
-      const start = cqlTextarea.selectionStart;
-      const end = cqlTextarea.selectionEnd;
+      const textarea = document.getElementById(`cql-${tabId}`);
+      if (!textarea) return null;
+      const start = textarea.selectionStart;
+      const end = textarea.selectionEnd;
       
       if (start !== end) {
         const selected = text.substring(start, end).trim();
@@ -1172,122 +1410,291 @@
     }
   }
 
-  async function executeQuery() {
-    // Récupérer la requête sélectionnée ou à la position du curseur
-    let query = getQueryAtCursor();
-    
-    // Si aucune requête trouvée, utiliser tout le texte
-    if (!query) {
-      query = getEditorValue().trim();
-    }
-    
-    statusDiv.textContent = '';
-    statusDiv.className = 'status';
-
-    if (!query) {
-      statusDiv.textContent = 'Veuillez saisir une requête CQL ou sélectionner une requête.';
-      statusDiv.classList.add('error');
+  // Exécuter une requête CQL
+  async function executeQuery(tabId) {
+    const query = getQueryAtCursor(tabId);
+    if (!query || !query.trim()) {
+      alert('Aucune requête à exécuter. Placez le curseur sur une requête valide.');
       return;
     }
 
+    const resultsDiv = document.getElementById(`results-${tabId}`);
+    const statusDiv = document.getElementById(`status-${tabId}`);
+    const executeBtn = document.getElementById(`runBtn-${tabId}`);
+    const loadingDiv = document.getElementById(`loading-${tabId}`);
+
+    if (!resultsDiv || !statusDiv || !executeBtn) {
+      console.error('UI elements missing for executeQuery', {
+        tabId,
+        resultsDiv,
+        statusDiv,
+        executeBtn
+      });
+      alert('Interface non prête pour cet onglet. Réessayez après avoir ouvert l\'onglet.');
+      return;
+    }
+
+    executeBtn.disabled = true;
+    if (loadingDiv) loadingDiv.style.display = 'block';
+    resultsDiv.innerHTML = '';
     statusDiv.textContent = 'Exécution en cours...';
+    statusDiv.className = 'status info';
+
     try {
       const response = await fetch('/execute', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
+        body: JSON.stringify({ query: query })
       });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        statusDiv.textContent = 'Erreur : ' + (err.detail || 'inconnue');
-        statusDiv.classList.add('error');
-        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
-        return;
-      }
 
       const data = await response.json();
 
-      if (!data.success && data.type !== 'batch') {
-        statusDiv.textContent = 'Erreur : ' + (data.error || 'inconnue');
-        statusDiv.classList.add('error');
-        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
-        return;
-      }
+      if (data.success) {
+        statusDiv.textContent = 'Requête exécutée avec succès.';
+        statusDiv.className = 'status success';
 
-      // Gestion des résultats batch (plusieurs requêtes)
-      if (data.type === 'batch') {
-        statusDiv.textContent = `Exécution terminée : ${data.successful} réussie(s), ${data.failed} échouée(s) sur ${data.total_queries} requête(s).`;
-        statusDiv.className = data.failed === 0 ? 'status success' : 'status error';
-        
-        let html = '';
-        html += `<div class="batch-result-header">Résultats de ${data.total_queries} requête(s)</div>`;
-        
-        // Afficher les résultats réussis
-        for (const result of data.results) {
-          html += `<div class="batch-result success">`;
-          html += `<div class="batch-result-header">Requête ${result.query_index}: ${result.query}</div>`;
-          if (result.type === 'select') {
-            html += `<div>${result.row_count} ligne(s) retournée(s)</div>`;
-            html += renderTableHTML(result.columns, result.rows);
-          } else {
-            html += `<div>${result.message || 'OK'}</div>`;
-          }
-          html += `</div>`;
+        if (data.results && data.results.length > 0) {
+          resultsDiv.innerHTML = renderTableHTML(data.results[0].columns, data.results[0].rows);
+        } else {
+          resultsDiv.innerHTML = '<div class="results-empty">Aucune ligne retournée.</div>';
         }
-        
-        // Afficher les erreurs
-        for (const error of data.errors) {
-          html += `<div class="batch-result error">`;
-          html += `<div class="batch-result-header">Requête ${error.query_index}: ${error.query}</div>`;
-          html += `<div style="color: #e74c3c;">Erreur : ${error.error}</div>`;
-          html += `</div>`;
-        }
-        
-        resultsDiv.innerHTML = html;
-        return;
-      }
-
-      // Gestion d'une seule requête (comportement original)
-      if (!data.success) {
-        statusDiv.textContent = 'Erreur : ' + (data.error || 'inconnue');
-        statusDiv.classList.add('error');
-        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
-        return;
-      }
-
-      statusDiv.textContent = 'Requête exécutée avec succès.';
-      statusDiv.classList.add('success');
-
-      if (data.type === 'select') {
-        renderTable(data.columns, data.rows);
       } else {
-        resultsDiv.innerHTML = `<div>${data.message || 'OK'}</div>`;
+        statusDiv.textContent = 'Erreur : ' + (data.error || 'inconnue');
+        statusDiv.className = 'status error';
+        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l\'exécution.</div>';
       }
-
-    } catch (err) {
-      console.error(err);
+    } catch (error) {
+      console.error(error);
       statusDiv.textContent = 'Erreur réseau ou serveur.';
-      statusDiv.classList.add('error');
-      resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l’exécution.</div>';
+      statusDiv.className = 'status error';
+      resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l\'exécution.</div>';
+    } finally {
+      executeBtn.disabled = false;
+      if (loadingDiv) loadingDiv.style.display = 'none';
     }
   }
 
-  function renderTable(columns, rows) {
-    if (!rows || rows.length === 0) {
-      resultsDiv.innerHTML = '<div class="results-empty">Aucune ligne retournée.</div>';
+  // Initialize query tabs when editor tab is activated
+  tabs.forEach(tab => {
+    tab.addEventListener('click', () => {
+      const target = tab.getAttribute('data-tab');
+      if (target === 'editor') {
+        // Initialize tabs if not already done
+        if (queryTabs.length === 0) {
+          initQueryTabs();
+          loadSavedQueriesAllTabs();
+          loadStatus(0);
+          loadKeyspaces(0);
+        }
+      }
+    });
+  });
+
+  // ---- Gestion des requêtes sauvegardées ----
+  function loadSavedQueries(tabId = activeQueryTab) {
+    const queries = getSavedQueries();
+    const listDiv = document.getElementById(`savedQueriesList-${tabId}`);
+
+    if (!listDiv) {
+      // Tab content not created yet, skip
       return;
     }
 
-    resultsDiv.innerHTML = renderTableHTML(columns, rows);
+    if (Object.keys(queries).length === 0) {
+      listDiv.innerHTML = '<div class="results-empty">Aucune requête sauvegardée.</div>';
+      return;
+    }
+
+    let html = '';
+    for (const [name, query] of Object.entries(queries)) {
+      html += `
+        <div class="saved-query-item">
+          <div class="saved-query-name">${name}</div>
+          <div class="saved-query-actions">
+            <button onclick="loadQuery('${name}', ${tabId})" class="btn-small"><i class="fas fa-edit icon"></i></button>
+            <button onclick="deleteQuery('${name}', ${tabId})" class="btn-small btn-danger"><i class="fas fa-trash icon"></i></button>
+          </div>
+        </div>
+      `;
+    }
+    listDiv.innerHTML = html;
+  }
+
+  function saveCurrentQuery(tabId = activeQueryTab) {
+    const queryNameInput = document.getElementById(`queryName-${tabId}`);
+    const statusDiv = document.getElementById(`status-${tabId}`);
+    if (!queryNameInput || !statusDiv) return;
+    const query = getEditorValue(tabId).trim();
+    const name = queryNameInput.value.trim();
+
+    if (!query) {
+      statusDiv.textContent = 'Aucune requête à sauvegarder.';
+      statusDiv.className = 'status error';
+      return;
+    }
+
+    if (!name) {
+      statusDiv.textContent = 'Veuillez donner un nom à cette requête.';
+      statusDiv.className = 'status error';
+      return;
+    }
+
+    const queries = getSavedQueries();
+    queries[name] = query;
+    saveQueries(queries);
+    loadSavedQueries(tabId);
+    queryNameInput.value = '';
+
+    statusDiv.textContent = `Requête "${name}" sauvegardée.`;
+    statusDiv.className = 'status success';
+  }
+
+  function loadQuery(name, tabId = activeQueryTab) {
+    const queries = getSavedQueries();
+    if (queries[name]) {
+      setEditorValue(tabId, queries[name]);
+      const queryNameInput = document.getElementById(`queryName-${tabId}`);
+      if (queryNameInput) queryNameInput.value = name;
+      const statusDiv = document.getElementById(`status-${tabId}`);
+      if (!statusDiv) return;
+      statusDiv.textContent = `Requête "${name}" chargée.`;
+      statusDiv.className = 'status success';
+      const tab = queryTabs.find(t => t.id === tabId);
+      if (tab && tab.editor) {
+        tab.editor.refresh();
+      }
+    }
+  }
+
+  function deleteQuery(name, tabId = activeQueryTab) {
+    if (!confirm(`Supprimer la requête "${name}" ?`)) {
+      return;
+    }
+
+    const queries = getSavedQueries();
+    delete queries[name];
+    saveQueries(queries);
+    loadSavedQueries(tabId);
+
+    const statusDiv = document.getElementById(`status-${tabId}`);
+    if (!statusDiv) return;
+    statusDiv.textContent = `Requête "${name}" supprimée.`;
+    statusDiv.className = 'status info';
+  }
+
+  // ---- Import/Export de fichiers ----
+  function importFile(tabId = activeQueryTab) {
+    const fileInput = document.getElementById(`importFile-${tabId}`);
+    if (!fileInput) return;
+    const file = fileInput.files[0];
+    if (!file) return;
+
+    const statusDiv = document.getElementById(`status-${tabId}`);
+    if (!statusDiv) return;
+    statusDiv.textContent = 'Importation en cours...';
+    statusDiv.className = 'status info';
+
+    const reader = new FileReader();
+    reader.onload = function(e) {
+      const content = e.target.result;
+      setEditorValue(tabId, content);
+      statusDiv.textContent = `Fichier "${file.name}" importé avec succès.`;
+      statusDiv.className = 'status success';
+
+      // Réinitialiser l'input pour permettre de réimporter le même fichier
+      fileInput.value = '';
+    };
+
+    reader.onerror = function() {
+      statusDiv.textContent = 'Erreur lors de la lecture du fichier.';
+      statusDiv.className = 'status error';
+      fileInput.value = '';
+    };
+
+    reader.readAsText(file);
+  }
+
+  // ---- Exécution de toutes les requêtes ----
+  async function executeAllQueries(tabId) {
+    const query = getEditorValue(tabId).trim();
+    if (!query) {
+      const statusDiv = document.getElementById(`status-${tabId}`);
+      if (!statusDiv) {
+        console.error('UI elements missing for executeAllQueries (no query)', { tabId, statusDiv });
+        alert('Interface non prête pour cet onglet.');
+        return;
+      }
+      statusDiv.textContent = 'Aucune requête à exécuter.';
+      statusDiv.className = 'status error';
+      return;
+    }
+
+    const resultsDiv = document.getElementById(`results-${tabId}`);
+    const runAllBtn = document.getElementById(`runAllBtn-${tabId}`);
+    const loadingDiv = document.getElementById(`loading-${tabId}`);
+
+    if (!resultsDiv || !runAllBtn) {
+      console.error('UI elements missing for executeAllQueries', {
+        tabId,
+        resultsDiv,
+        runAllBtn
+      });
+      alert('Interface non prête pour cet onglet. Réessayez après avoir ouvert l\'onglet.');
+      return;
+    }
+
+    runAllBtn.disabled = true;
+    if (loadingDiv) loadingDiv.style.display = 'block';
+    resultsDiv.innerHTML = '';
+
+    try {
+      const response = await fetch('/execute', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ query: query })
+      });
+
+      const data = await response.json();
+
+      if (data.success) {
+        if (data.results && data.results.length > 0) {
+          displayResults(resultsDiv, data.results);
+        } else {
+          resultsDiv.innerHTML = '<div class="success">Requête(s) exécutée(s) avec succès</div>';
+        }
+      } else {
+        resultsDiv.innerHTML = `<div class="error">Erreur: ${data.error}</div>`;
+      }
+    } catch (error) {
+      resultsDiv.innerHTML = `<div class="error">Erreur de connexion: ${error.message}</div>`;
+    } finally {
+      runAllBtn.disabled = false;
+      if (loadingDiv) loadingDiv.style.display = 'none';
+    }
+  }
+
+  // ---- Affichage des résultats ----
+  function displayResults(container, results) {
+    if (!results || results.length === 0) {
+      container.innerHTML = '<div class="results-empty">Aucun résultat.</div>';
+      return;
+    }
+
+    let html = '';
+    for (const result of results) {
+      if (result.type === 'select' && result.columns && result.rows) {
+        html += renderTableHTML(result.columns, result.rows);
+      } else {
+        html += `<div class="result-message">${result.message || 'OK'}</div>`;
+      }
+    }
+    container.innerHTML = html;
   }
 
   function renderTableHTML(columns, rows) {
-    if (!rows || rows.length === 0) {
-      return '<div class="results-empty">Aucune ligne retournée.</div>';
-    }
+    if (!columns || !rows) return '<div class="results-empty">Aucun résultat.</div>';
 
-    let html = '<table><thead><tr>';
+    let html = '<table class="results-table"><thead><tr>';
     for (const col of columns) {
       html += `<th>${col}</th>`;
     }
@@ -1296,181 +1703,14 @@
     for (const row of rows) {
       html += '<tr>';
       for (const col of columns) {
-        let value = row[col];
-        if (value === null || value === undefined) {
-          value = '';
-        } else if (typeof value === 'object') {
-          value = JSON.stringify(value);
-        }
-        // Échapper les caractères HTML pour la sécurité
-        value = String(value).replace(/</g, '&lt;').replace(/>/g, '&gt;');
+        const value = row[col] !== null && row[col] !== undefined ? row[col] : 'null';
         html += `<td>${value}</td>`;
       }
       html += '</tr>';
     }
-
     html += '</tbody></table>';
     return html;
   }
-
-  const runAllBtn = document.getElementById('runAllBtn');
-
-  async function executeAllQueries() {
-    const query = getEditorValue().trim();
-    statusDiv.textContent = '';
-    statusDiv.className = 'status';
-
-    if (!query) {
-      statusDiv.textContent = 'Veuillez saisir une requête CQL.';
-      statusDiv.classList.add('error');
-      return;
-    }
-
-    statusDiv.textContent = 'Exécution en cours...';
-    try {
-      const response = await fetch('/execute', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ query }),
-      });
-
-      if (!response.ok) {
-        const err = await response.json().catch(() => ({}));
-        statusDiv.textContent = 'Erreur : ' + (err.detail || 'inconnue');
-        statusDiv.classList.add('error');
-        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
-        return;
-      }
-
-      const data = await response.json();
-
-      if (!data.success && data.type !== 'batch') {
-        statusDiv.textContent = 'Erreur : ' + (data.error || 'inconnue');
-        statusDiv.classList.add('error');
-        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
-        return;
-      }
-
-      // Gestion des résultats batch (plusieurs requêtes)
-      if (data.type === 'batch') {
-        statusDiv.textContent = `Exécution terminée : ${data.successful} réussie(s), ${data.failed} échouée(s) sur ${data.total_queries} requête(s).`;
-        statusDiv.className = data.failed === 0 ? 'status success' : 'status error';
-        
-        let html = '';
-        html += `<div class="batch-result-header">Résultats de ${data.total_queries} requête(s)</div>`;
-        
-        // Afficher les résultats réussis
-        for (const result of data.results) {
-          html += `<div class="batch-result success">`;
-          html += `<div class="batch-result-header">Requête ${result.query_index}: ${result.query}</div>`;
-          if (result.type === 'select') {
-            html += `<div>${result.row_count} ligne(s) retournée(s)</div>`;
-            html += renderTableHTML(result.columns, result.rows);
-          } else {
-            html += `<div>${result.message || 'OK'}</div>`;
-          }
-          html += `</div>`;
-        }
-        
-        // Afficher les erreurs
-        for (const error of data.errors) {
-          html += `<div class="batch-result error">`;
-          html += `<div class="batch-result-header">Requête ${error.query_index}: ${error.query}</div>`;
-          html += `<div style="color: #e74c3c;">Erreur : ${error.error}</div>`;
-          html += `</div>`;
-        }
-        
-        resultsDiv.innerHTML = html;
-        return;
-      }
-
-      // Gestion d'une seule requête (comportement original)
-      if (!data.success) {
-        statusDiv.textContent = 'Erreur : ' + (data.error || 'inconnue');
-        statusDiv.classList.add('error');
-        resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
-        return;
-      }
-
-      statusDiv.textContent = 'Requête exécutée avec succès.';
-      statusDiv.classList.add('success');
-
-      if (data.type === 'select') {
-        renderTable(data.columns, data.rows);
-      } else {
-        resultsDiv.innerHTML = `<div>${data.message || 'OK'}</div>`;
-      }
-
-    } catch (err) {
-      console.error(err);
-      statusDiv.textContent = 'Erreur réseau ou serveur.';
-      statusDiv.classList.add('error');
-      resultsDiv.innerHTML = '<div class="results-empty">Erreur lors de l&apos;exécution.</div>';
-    }
-  }
-
-  // Fonction d'import de fichier CQL
-  const importFileInput = document.getElementById('importFile');
-  
-  importFileInput.addEventListener('change', function(e) {
-    const file = e.target.files[0];
-    if (!file) return;
-    
-    const reader = new FileReader();
-    reader.onload = function(event) {
-      const content = event.target.result;
-      setEditorValue(content);
-      if (codeEditor) {
-        codeEditor.refresh();
-      }
-      statusDiv.textContent = `Fichier "${file.name}" importé avec succès.`;
-      statusDiv.className = 'status success';
-      
-      // Réinitialiser l'input pour permettre de réimporter le même fichier
-      importFileInput.value = '';
-    };
-    
-    reader.onerror = function() {
-      statusDiv.textContent = 'Erreur lors de la lecture du fichier.';
-      statusDiv.className = 'status error';
-      importFileInput.value = '';
-    };
-    
-    reader.readAsText(file);
-  });
-
-  saveConfigBtn.addEventListener('click', saveConfig);
-  runBtn.addEventListener('click', executeQuery);
-  runAllBtn.addEventListener('click', executeAllQueries);
-  saveQueryBtn.addEventListener('click', saveQuery);
-
-  // Initialiser l'éditeur CodeMirror quand l'onglet éditeur est activé
-  tabs.forEach(tab => {
-    tab.addEventListener('click', () => {
-      const target = tab.getAttribute('data-tab');
-      if (target === 'editor' && !codeEditor) {
-        // Attendre un peu pour que le DOM soit prêt
-        setTimeout(() => {
-          initCodeEditor();
-        }, 100);
-      }
-    });
-  });
-
-  // Initialiser immédiatement si l'onglet éditeur est déjà actif
-  if (tabEditor && tabEditor.style.display !== 'none') {
-    setTimeout(() => {
-      initCodeEditor();
-    }, 100);
-  }
-
-  loadConfig();
-  loadSavedQueries();
-  loadStatus();
-  loadKeyspaces();
 </script>
 </body>
 </html>
-
-
-
