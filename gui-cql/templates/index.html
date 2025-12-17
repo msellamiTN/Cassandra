@@ -1199,8 +1199,16 @@
 
   function getSavedQueries() {
     try {
-      const stored = localStorage.getItem(STORAGE_KEY);
-      return stored ? JSON.parse(stored) : {};
+      const stored = localStorage.getItem(STORAGE_KEY) || localStorage.getItem('cql_saved_queries');
+      const parsed = stored ? JSON.parse(stored) : {};
+      if (!localStorage.getItem(STORAGE_KEY) && stored) {
+        try {
+          localStorage.setItem(STORAGE_KEY, JSON.stringify(parsed));
+        } catch (e) {
+          console.error('Erreur lors de la sauvegarde:', e);
+        }
+      }
+      return parsed;
     } catch (e) {
       return {};
     }
@@ -1551,8 +1559,9 @@
       if (!statusDiv) return;
       statusDiv.textContent = `Requête "${name}" chargée.`;
       statusDiv.className = 'status success';
-      if (queryTabs.find(t => t.id === tabId).editor) {
-        queryTabs.find(t => t.id === tabId).editor.refresh();
+      const tab = queryTabs.find(t => t.id === tabId);
+      if (tab && tab.editor) {
+        tab.editor.refresh();
       }
     }
   }
