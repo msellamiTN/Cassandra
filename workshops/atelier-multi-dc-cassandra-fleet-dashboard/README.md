@@ -1,16 +1,18 @@
-# Atelier complet — Cassandra multi‑DC (dc1/dc2) + CQL Web Editor + Fleet Dashboard (Streamlit)
+# Atelier étudiant — Cassandra multi‑DC (dc1/dc2) + CQL Web Editor + Fleet Dashboard (Streamlit)
 
-Cet atelier te guide **pas à pas** pour démarrer et valider un cluster **Cassandra multi‑datacenter** (2 DC logiques via Docker Compose) et exploiter :
+## Énoncé
 
-- l’éditeur **CQL Web** (FastAPI)
+Tu dois mettre en place (avec Docker Compose) un cluster **Cassandra multi‑datacenter** (2 DC logiques : `dc1` et `dc2`) puis valider son bon fonctionnement via :
+
+- l’éditeur **CQL Web**
 - le dashboard **Fleet IoT** (Streamlit)
 
-Il est structuré en **2 volets** :
+L’atelier est structuré en **2 volets à réaliser** :
 
-- **Volet A — ETL workshop** : génération de fausses données IoT et ingestion continue dans Cassandra.
-- **Volet B — Dashboard workshop** : analytics “near‑realtime” sur les données Fleet via Streamlit.
+- **Volet A — ETL** : générer des fausses données IoT et les ingérer en continu dans Cassandra.
+- **Volet B — Dashboard** : analyser les données “near‑realtime” via Streamlit.
 
-L’objectif est d’obtenir un environnement fiable pour un workshop (démarrage reproductible, validations, dépannage).
+Règle : tu avances étape par étape, et tu ne passes à la suite que lorsque le **checkpoint ✅** est validé.
 
 ---
 
@@ -21,6 +23,24 @@ L’objectif est d’obtenir un environnement fiable pour un workshop (démarrag
 - Exécuter des scripts CQL (création keyspaces/tables + inserts + requêtes) via UI et `cqlsh`.
 - Mettre en place une boucle **ETL** (génération + ingestion) pour alimenter un cas d’usage.
 - Visualiser/analyser des données IoT (devices, latest, alerts, telemetry) via Streamlit.
+
+---
+
+## Rendu attendu
+
+- Une preuve que le cluster est multi‑DC (copie du `nodetool status` montrant `dc1` et `dc2` en `UN`).
+- Une preuve que le keyspace `atelier` existe (commande `DESCRIBE KEYSPACES` ou capture).
+- Une requête CQL de validation sur `telemetry_by_fleet_day` (avec le jour courant) et son résultat.
+- Une capture (ou description) de l’onglet `Realtime Analytics` du dashboard (KPIs + carte).
+
+---
+
+## Parcours conseillé (ordre de réalisation)
+
+- 1–6 : mise en place et validation du cluster + keyspace
+- Volet A (ETL) : alimenter `telemetry_by_fleet_day`
+- Volet B (Dashboard) : vérifier les onglets + `Realtime Analytics`
+- Bonus : keyspace `covid19` + manip de consistency
 
 ---
 
@@ -80,7 +100,7 @@ Notes :
 
 ## 3) Démarrage (clean start)
 
-Depuis la racine du repo :
+À faire — depuis la racine du repo :
 
 ```bash
 docker compose up -d --build
@@ -112,6 +132,8 @@ Attendu :
 ## 4) Vérifier le cluster multi‑DC
 
 ### 4.1 — Vérifier l’état des nœuds
+
+À faire :
 
 ```bash
 docker exec -it cql-gui-cassandra nodetool status
@@ -152,6 +174,8 @@ docker exec -it cql-gui-cassandra cqlsh localhost 9042 -e "DESCRIBE KEYSPACES;"
 ```
 
 Attendu : `atelier` apparaît dans la liste.
+
+À fournir : une capture (ou copier/coller) de la sortie montrant `atelier`.
 
 ---
 
@@ -257,9 +281,14 @@ CREATE TABLE IF NOT EXISTS telemetry_by_fleet_day (
   - Partition = `(fleet_id, day, severity)`
   - Clustering = `ts DESC` puis `device_id`
 
+Mini‑questions (à répondre en 2–3 lignes) :
+
+- Pourquoi le `day` est-il dans la partition key pour `telemetry_by_device_day` et `telemetry_by_fleet_day` ?
+- Quel est l’intérêt du `CLUSTERING ORDER BY (ts DESC)` dans ce cas d’usage ?
+
 ---
 
-## 8) Seed minimal (données de test)
+## 8) Données de test (seed minimal)
 
 Si `fleet-etl` tourne, tu peux sauter cette partie (les données seront générées automatiquement).
 
@@ -303,11 +332,13 @@ SELECT * FROM telemetry_by_device_day WHERE device_id='BUS-001' AND day='2025-12
 SELECT * FROM alerts_by_fleet_day WHERE fleet_id='FLEET_PARIS' AND day='2025-12-17' AND severity='HIGH' LIMIT 10;
 ```
 
+À fournir : 1 capture (ou copier/coller) d’au moins une requête qui retourne des lignes.
+
 ---
 
 ## 9) Utiliser le Fleet Dashboard (Streamlit)
 
-Ouvre : <http://localhost:8501>
+À faire — ouvre : <http://localhost:8501>
 
 Le dashboard propose 2 usages :
 
@@ -349,9 +380,11 @@ Attendu :
 - Distribution des vitesses
 - Carte avec les dernières positions (1 point par device)
 
+À fournir : une capture (ou description) des KPIs + de la carte.
+
 ---
 
-## Volet A — ETL workshop (génération + ingestion)
+## Volet A — ETL (génération + ingestion) — à faire
 
 Le service `fleet-etl` génère des points de télémétrie et les insère dans Cassandra :
 
@@ -387,6 +420,8 @@ LIMIT 20;
 ```
 
 Remplace `YYYY-MM-DD` par la date du jour (celle utilisée dans Streamlit).
+
+Checkpoint ✅ : la requête retourne des lignes, et les timestamps sont récents (proches de maintenant).
 
 ---
 
