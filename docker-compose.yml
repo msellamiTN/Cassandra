@@ -105,6 +105,23 @@ services:
     networks:
       - cassandra-net
 
+  cassandra-init:
+    image: cassandra:4.1
+    container_name: cassandra-init
+    platform: linux/amd64
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    restart: "no"
+    volumes:
+      - ./cql-scripts:/cql-scripts
+    entrypoint: ["sh", "-c"]
+    command: >
+      "until cqlsh cassandra 9042 -e 'DESCRIBE CLUSTER' >/dev/null 2>&1; do sleep 2; done;
+      cqlsh cassandra 9042 -f /cql-scripts/atelier.cql"
+    networks:
+      - cassandra-net
+
   cql-gui:
     build: ./gui-cql
     container_name: cql-gui-app
@@ -113,6 +130,8 @@ services:
     depends_on:
       cassandra:
         condition: service_healthy
+      cassandra-init:
+        condition: service_completed_successfully
     environment:
       - CASSANDRA_HOSTS=cassandra,cassandra-dc2-1
       - CASSANDRA_PORT=9042
@@ -134,6 +153,8 @@ services:
     depends_on:
       cassandra:
         condition: service_healthy
+      cassandra-init:
+        condition: service_completed_successfully
     environment:
       - CASSANDRA_HOSTS=cassandra,cassandra-dc2-1
       - CASSANDRA_PORT=9042

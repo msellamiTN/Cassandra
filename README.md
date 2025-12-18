@@ -179,6 +179,7 @@ Différence importante :
 
 - **Docker Compose (TP)** : multi‑DC “logique” (même réseau Docker, même machine) pour apprendre la réplication/consistency.
 - **Multi‑DC réel** : latence WAN, firewall, routing, contraintes d’exploitation (monitoring, backups, repairs).
+
 ![alt text](image.png)
 ### ✅ Prérequis
 
