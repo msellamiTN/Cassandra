@@ -15,14 +15,16 @@ services:
       - "9042:9042"
     environment:
       - CASSANDRA_START_RPC=true
+      - CASSANDRA_SEEDS=cassandra,cassandra-dc2-1
       - CASSANDRA_CLUSTER_NAME=CqlGuiCluster
       - CASSANDRA_DC=dc1
       - CASSANDRA_RACK=rack1
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
       - CASSANDRA_NUM_TOKENS=8
       - MAX_HEAP_SIZE=512M
       - HEAP_NEWSIZE=128M
     healthcheck:
-      test: ["CMD-SHELL", "cqlsh cassandra-node 9042 || exit 1"]
+      test: ["CMD-SHELL", "cqlsh localhost 9042 || exit 1"]
       interval: 30s
       timeout: 10s
       retries: 10
@@ -34,6 +36,75 @@ services:
           - cassandra
           - cassandra-db
 
+  cassandra-dc1-2:
+    image: cassandra:4.1
+    container_name: cassandra-dc1-2
+    hostname: cassandra-dc1-2
+    platform: linux/amd64
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    environment:
+      - CASSANDRA_START_RPC=true
+      - CASSANDRA_SEEDS=cassandra,cassandra-dc2-1
+      - CASSANDRA_CLUSTER_NAME=CqlGuiCluster
+      - CASSANDRA_DC=dc1
+      - CASSANDRA_RACK=rack2
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_NUM_TOKENS=8
+      - MAX_HEAP_SIZE=512M
+      - HEAP_NEWSIZE=128M
+    volumes:
+      - cassandra_data_dc1_2:/var/lib/cassandra
+    networks:
+      - cassandra-net
+
+  cassandra-dc2-1:
+    image: cassandra:4.1
+    container_name: cassandra-dc2-1
+    hostname: cassandra-dc2-1
+    platform: linux/amd64
+    depends_on:
+      cassandra:
+        condition: service_healthy
+    environment:
+      - CASSANDRA_START_RPC=true
+      - CASSANDRA_SEEDS=cassandra,cassandra-dc2-1
+      - CASSANDRA_CLUSTER_NAME=CqlGuiCluster
+      - CASSANDRA_DC=dc2
+      - CASSANDRA_RACK=rack1
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_NUM_TOKENS=8
+      - MAX_HEAP_SIZE=512M
+      - HEAP_NEWSIZE=128M
+    volumes:
+      - cassandra_data_dc2_1:/var/lib/cassandra
+    networks:
+      - cassandra-net
+
+  cassandra-dc2-2:
+    image: cassandra:4.1
+    container_name: cassandra-dc2-2
+    hostname: cassandra-dc2-2
+    platform: linux/amd64
+    depends_on:
+      cassandra-dc2-1:
+        condition: service_started
+    environment:
+      - CASSANDRA_START_RPC=true
+      - CASSANDRA_SEEDS=cassandra,cassandra-dc2-1
+      - CASSANDRA_CLUSTER_NAME=CqlGuiCluster
+      - CASSANDRA_DC=dc2
+      - CASSANDRA_RACK=rack2
+      - CASSANDRA_ENDPOINT_SNITCH=GossipingPropertyFileSnitch
+      - CASSANDRA_NUM_TOKENS=8
+      - MAX_HEAP_SIZE=512M
+      - HEAP_NEWSIZE=128M
+    volumes:
+      - cassandra_data_dc2_2:/var/lib/cassandra
+    networks:
+      - cassandra-net
+
   cql-gui:
     build: ./gui-cql
     container_name: cql-gui-app
@@ -43,7 +114,7 @@ services:
       cassandra:
         condition: service_healthy
     environment:
-      - CASSANDRA_HOSTS=cassandra
+      - CASSANDRA_HOSTS=cassandra,cassandra-dc2-1
       - CASSANDRA_PORT=9042
       # - CASSANDRA_KEYSPACE=mon_keyspace
       # - CASSANDRA_USER=username
@@ -64,7 +135,7 @@ services:
       cassandra:
         condition: service_healthy
     environment:
-      - CASSANDRA_HOSTS=cassandra
+      - CASSANDRA_HOSTS=cassandra,cassandra-dc2-1
       - CASSANDRA_PORT=9042
       - CASSANDRA_KEYSPACE=atelier
     ports:
@@ -85,3 +156,6 @@ volumes:
   jupyter-data:
     name: jupyter-data
   cassandra_data:
+  cassandra_data_dc1_2:
+  cassandra_data_dc2_1:
+  cassandra_data_dc2_2:
