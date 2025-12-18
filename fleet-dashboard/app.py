@@ -106,6 +106,31 @@ def load_devices(fleet_id: str):
         return pd.DataFrame(), str(exc)
 
 
+def load_realtime_fleet(fleet_id: str, day_str: str, limit: int):
+    try:
+        session = _ensure_session_cached()
+        if not fleet_id.strip():
+            return pd.DataFrame(), "fleet_id is required"
+        if not day_str.strip():
+            return pd.DataFrame(), "day is required"
+
+        day_value = _parse_iso_date(day_str)
+        limit_value = int(limit)
+        if limit_value < 1:
+            limit_value = 1
+        if limit_value > 5000:
+            limit_value = 5000
+
+        rs = session.execute(
+            f"SELECT ts, device_id, lat, lon, speed_kmh, battery_pct, temp_c, zone FROM {_qualify_table('telemetry_by_fleet_day')} WHERE fleet_id=%s AND day=%s LIMIT {limit_value}",
+            (fleet_id.strip(), day_value),
+        )
+        df = _rows_to_df(rs)
+        return df, ""
+    except Exception as exc:
+        return pd.DataFrame(), str(exc)
+
+
 def load_latest(device_id: str):
     try:
         session = _ensure_session_cached()
@@ -179,7 +204,7 @@ with st.sidebar:
         language="text",
     )
 
-tabs = st.tabs(["Devices", "Latest", "Alerts", "Telemetry"])
+tabs = st.tabs(["Devices", "Latest", "Alerts", "Telemetry", "Realtime Analytics"])
 
 with tabs[0]:
     st.subheader("Devices by fleet")
@@ -257,3 +282,58 @@ with tabs[3]:
                     map_df["lat"] = pd.to_numeric(map_df["lat"], errors="coerce")
                     map_df["lon"] = pd.to_numeric(map_df["lon"], errors="coerce")
                     st.map(map_df.dropna(), use_container_width=True)
+
+with tabs[4]:
+    st.subheader("Realtime analytics (fleet)")
+    rt_fleet_id = st.text_input("fleet_id", value="FLEET_PARIS", key="rt_fleet_id")
+    rt_day = st.date_input("day", value=date.today(), key="rt_day")
+    rt_limit = st.slider("limit", min_value=100, max_value=5000, value=1000, step=100, key="rt_limit")
+
+    if st.button("Refresh", key="rt_refresh"):
+        df, err = load_realtime_fleet(rt_fleet_id, rt_day.isoformat(), int(rt_limit))
+        if err:
+            st.error(err)
+        else:
+            st.caption("Data source: telemetry_by_fleet_day")
+            st.dataframe(df, use_container_width=True)
+
+            if df.empty:
+                st.info("No data yet. Start the ETL generator (fleet-etl) and retry.")
+            else:
+                df2 = df.copy()
+                if "ts" in df2.columns:
+                    df2["ts"] = pd.to_datetime(df2["ts"], errors="coerce")
+
+                for col in ["speed_kmh", "battery_pct", "temp_c", "lat", "lon"]:
+                    if col in df2.columns:
+                        df2[col] = pd.to_numeric(df2[col], errors="coerce")
+
+                c1, c2, c3, c4 = st.columns(4)
+                c1.metric(
+                    "Devices (seen)",
+                    str(df2["device_id"].nunique() if "device_id" in df2.columns else 0),
+                )
+                c2.metric("Rows", str(len(df2)))
+                if "ts" in df2.columns:
+                    c3.metric("Latest ts", str(df2["ts"].max()))
+                    c4.metric("Oldest ts", str(df2["ts"].min()))
+                else:
+                    c3.metric("Latest ts", "")
+                    c4.metric("Oldest ts", "")
+
+                if "speed_kmh" in df2.columns:
+                    st.subheader("Speed distribution")
+                    st.bar_chart(
+                        df2["speed_kmh"].dropna().round().value_counts().sort_index(),
+                        use_container_width=True,
+                    )
+
+                if set(["device_id", "ts", "lat", "lon"]).issubset(df2.columns):
+                    st.subheader("Last positions")
+                    last_pos = (
+                        df2.dropna(subset=["ts", "lat", "lon"])
+                        .sort_values("ts")
+                        .groupby("device_id")
+                        .tail(1)
+                    )
+                    st.map(last_pos[["lat", "lon"]].dropna(), use_container_width=True)

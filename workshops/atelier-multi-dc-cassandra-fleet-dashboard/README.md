@@ -5,6 +5,11 @@ Cet atelier te guide **pas à pas** pour démarrer et valider un cluster **Cassa
 - l’éditeur **CQL Web** (FastAPI)
 - le dashboard **Fleet IoT** (Streamlit)
 
+Il est structuré en **2 volets** :
+
+- **Volet A — ETL workshop** : génération de fausses données IoT et ingestion continue dans Cassandra.
+- **Volet B — Dashboard workshop** : analytics “near‑realtime” sur les données Fleet via Streamlit.
+
 L’objectif est d’obtenir un environnement fiable pour un workshop (démarrage reproductible, validations, dépannage).
 
 ---
@@ -14,7 +19,8 @@ L’objectif est d’obtenir un environnement fiable pour un workshop (démarrag
 - Comprendre ce qu’implique un cluster Cassandra **multi‑DC** (snitch, DC/Rack, seeds).
 - Utiliser la réplication **NetworkTopologyStrategy** et choisir une stratégie de réplication cohérente.
 - Exécuter des scripts CQL (création keyspaces/tables + inserts + requêtes) via UI et `cqlsh`.
-- Visualiser des données IoT (devices, latest, alerts, telemetry) via Streamlit.
+- Mettre en place une boucle **ETL** (génération + ingestion) pour alimenter un cas d’usage.
+- Visualiser/analyser des données IoT (devices, latest, alerts, telemetry) via Streamlit.
 
 ---
 
@@ -80,6 +86,10 @@ Depuis la racine du repo :
 docker compose up -d --build
 ```
 
+Remarque :
+
+- Le service `fleet-etl` tourne en continu et génère des données (tu peux le stopper/redémarrer à la demande).
+
 ### Checkpoint ✅ — Les conteneurs tournent
 
 ```bash
@@ -95,6 +105,7 @@ Attendu :
 - `cassandra-init` (terminé avec succès)
 - `cql-gui-app`
 - `fleet-dashboard`
+- `fleet-etl`
 
 ---
 
@@ -127,10 +138,12 @@ C’est indispensable pour que Cassandra annonce les DC correctement.
 Au démarrage, le service **one‑shot** `cassandra-init` exécute :
 
 - `cql-scripts/atelier.cql`
+- `cql-scripts/atelier_fleet_schema.cql`
 
 Contenu (résumé) :
 
 - `CREATE KEYSPACE atelier WITH replication = {'class':'NetworkTopologyStrategy','dc1':2,'dc2':2}`
+- Création des tables Fleet IoT (`devices_by_fleet`, `latest_telemetry_by_device`, `telemetry_by_device_day`, `alerts_by_fleet_day`, `telemetry_by_fleet_day`).
 
 ### Checkpoint ✅ — Le keyspace existe
 
@@ -159,9 +172,15 @@ Le dashboard Streamlit lit ces tables (dans le keyspace `atelier`) :
 - `telemetry_by_device_day`
 - `alerts_by_fleet_day`
 
-### 7.1 — Créer les tables (dans l’UI CQL)
+Le générateur ETL écrit aussi dans :
 
-Ouvre l’UI CQL puis exécute :
+- `telemetry_by_fleet_day`
+
+### 7.1 — Créer les tables (optionnel)
+
+En principe, elles sont créées automatiquement par `cassandra-init`.
+
+Si tu veux rejouer la création “à la main” (ou si tu as supprimé les volumes), ouvre l’UI CQL puis exécute :
 
 ```sql
 USE atelier;
@@ -207,6 +226,20 @@ CREATE TABLE IF NOT EXISTS alerts_by_fleet_day (
   message text,
   PRIMARY KEY ((fleet_id, day, severity), ts, device_id)
 ) WITH CLUSTERING ORDER BY (ts DESC);
+
+CREATE TABLE IF NOT EXISTS telemetry_by_fleet_day (
+  fleet_id text,
+  day date,
+  ts timestamp,
+  device_id text,
+  lat double,
+  lon double,
+  speed_kmh double,
+  battery_pct int,
+  temp_c double,
+  zone text,
+  PRIMARY KEY ((fleet_id, day), ts, device_id)
+) WITH CLUSTERING ORDER BY (ts DESC);
 ```
 
 ### 7.2 — Comprendre le design (mini‑explication)
@@ -227,6 +260,8 @@ CREATE TABLE IF NOT EXISTS alerts_by_fleet_day (
 ---
 
 ## 8) Seed minimal (données de test)
+
+Si `fleet-etl` tourne, tu peux sauter cette partie (les données seront générées automatiquement).
 
 Exécute dans l’UI CQL :
 
@@ -274,6 +309,11 @@ SELECT * FROM alerts_by_fleet_day WHERE fleet_id='FLEET_PARIS' AND day='2025-12-
 
 Ouvre : <http://localhost:8501>
 
+Le dashboard propose 2 usages :
+
+- **Exploration** : onglets `Devices`, `Latest`, `Alerts`, `Telemetry`.
+- **Volet B — Realtime analytics** : onglet `Realtime Analytics` (flotte + KPIs + positions + distribution vitesses).
+
 ### 9.1 — Onglet Devices
 
 - Entre `fleet_id = FLEET_PARIS`
@@ -294,6 +334,59 @@ Ouvre : <http://localhost:8501>
 
 - `device_id = BUS-001`
 - `day = 2025-12-17`
+
+### 9.5 — Onglet Realtime Analytics (Volet B)
+
+Cet onglet lit `telemetry_by_fleet_day` pour une flotte/jour donnés.
+
+1. Mets `fleet_id = FLEET_PARIS`
+1. Mets `day = (aujourd'hui)`
+1. Clique `Refresh`
+
+Attendu :
+
+- KPIs (devices vus, nombre de lignes, timestamps)
+- Distribution des vitesses
+- Carte avec les dernières positions (1 point par device)
+
+---
+
+## Volet A — ETL workshop (génération + ingestion)
+
+Le service `fleet-etl` génère des points de télémétrie et les insère dans Cassandra :
+
+- 2 flottes par défaut : `FLEET_PARIS`, `FLEET_LYON`
+- N devices par flotte (`ETL_DEVICES_PER_FLEET`)
+- Une cadence (`ETL_INTERVAL_MS`)
+
+### A1) Démarrer / arrêter l’ETL
+
+```bash
+docker compose stop fleet-etl
+docker compose up -d fleet-etl
+```
+
+### A2) Suivre les logs
+
+```bash
+docker logs -f fleet-etl
+```
+
+### A3) Valider l’ingestion côté Cassandra
+
+Dans l’UI CQL (ou via `cqlsh`) :
+
+```sql
+USE atelier;
+
+SELECT *
+FROM telemetry_by_fleet_day
+WHERE fleet_id='FLEET_PARIS'
+  AND day='YYYY-MM-DD'
+LIMIT 20;
+```
+
+Remplace `YYYY-MM-DD` par la date du jour (celle utilisée dans Streamlit).
 
 ---
 

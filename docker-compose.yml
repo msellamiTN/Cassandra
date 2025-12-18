@@ -118,7 +118,8 @@ services:
     entrypoint: ["sh", "-c"]
     command: >
       "until cqlsh cassandra 9042 -e 'DESCRIBE CLUSTER' >/dev/null 2>&1; do sleep 2; done;
-      cqlsh cassandra 9042 -f /cql-scripts/atelier.cql"
+      cqlsh cassandra 9042 -f /cql-scripts/atelier.cql;
+      cqlsh cassandra 9042 -f /cql-scripts/atelier_fleet_schema.cql"
     networks:
       - cassandra-net
 
@@ -161,6 +162,25 @@ services:
       - CASSANDRA_KEYSPACE=atelier
     ports:
       - "8501:8501"
+    networks:
+      - cassandra-net
+
+  fleet-etl:
+    build: ./fleet-etl
+    container_name: fleet-etl
+    hostname: fleet-etl
+    platform: linux/amd64
+    depends_on:
+      cassandra-init:
+        condition: service_completed_successfully
+    environment:
+      - CASSANDRA_HOSTS=cassandra,cassandra-dc2-1
+      - CASSANDRA_PORT=9042
+      - CASSANDRA_KEYSPACE=atelier
+      - ETL_FLEETS=FLEET_PARIS,FLEET_LYON
+      - ETL_DEVICES_PER_FLEET=5
+      - ETL_INTERVAL_MS=500
+      - ETL_ALERT_PROB=0.03
     networks:
       - cassandra-net
 
