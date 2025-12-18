@@ -1,5 +1,3 @@
-version: "3.9"
-
 networks:
   cassandra-net:
     driver: bridge
@@ -15,7 +13,7 @@ services:
       - "9042:9042"
     environment:
       - CASSANDRA_START_RPC=true
-      - CASSANDRA_SEEDS=cassandra,cassandra-dc2-1
+      - CASSANDRA_SEEDS=cassandra
       - CASSANDRA_CLUSTER_NAME=CqlGuiCluster
       - CASSANDRA_DC=dc1
       - CASSANDRA_RACK=rack1
@@ -46,7 +44,7 @@ services:
         condition: service_healthy
     environment:
       - CASSANDRA_START_RPC=true
-      - CASSANDRA_SEEDS=cassandra,cassandra-dc2-1
+      - CASSANDRA_SEEDS=cassandra
       - CASSANDRA_CLUSTER_NAME=CqlGuiCluster
       - CASSANDRA_DC=dc1
       - CASSANDRA_RACK=rack2
@@ -69,7 +67,7 @@ services:
         condition: service_healthy
     environment:
       - CASSANDRA_START_RPC=true
-      - CASSANDRA_SEEDS=cassandra,cassandra-dc2-1
+      - CASSANDRA_SEEDS=cassandra
       - CASSANDRA_CLUSTER_NAME=CqlGuiCluster
       - CASSANDRA_DC=dc2
       - CASSANDRA_RACK=rack1
@@ -92,7 +90,7 @@ services:
         condition: service_started
     environment:
       - CASSANDRA_START_RPC=true
-      - CASSANDRA_SEEDS=cassandra,cassandra-dc2-1
+      - CASSANDRA_SEEDS=cassandra
       - CASSANDRA_CLUSTER_NAME=CqlGuiCluster
       - CASSANDRA_DC=dc2
       - CASSANDRA_RACK=rack2
