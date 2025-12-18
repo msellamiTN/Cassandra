@@ -4,7 +4,7 @@ WORKDIR /app
 
 ENV PYTHONDONTWRITEBYTECODE=1
 ENV PYTHONUNBUFFERED=1
-ENV GRADIO_ANALYTICS_ENABLED=false
+ENV STREAMLIT_SERVER_HEADLESS=true
 
 RUN apt-get update && apt-get install -y --no-install-recommends \
     build-essential \
@@ -15,6 +15,6 @@ RUN pip install --no-cache-dir -r requirements.txt
 
 COPY . .
 
-EXPOSE 7860
+EXPOSE 8501
 
-CMD ["python", "app.py"]
+CMD ["streamlit", "run", "app.py", "--server.address=0.0.0.0", "--server.port=8501"]
