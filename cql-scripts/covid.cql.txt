@@ -3,17 +3,17 @@
 --------------#####################################################################################--------------------------- 
 
 --------------########Creation d'un keyspace#################--------------
-CREATE KEYSPACE IF NOT EXISTS Covid19
-WITH REPLICATION={'class':'SimpleStrategy','replication_factor':3};
+CREATE KEYSPACE IF NOT EXISTS covid19
+WITH REPLICATION={'class':'NetworkTopologyStrategy','dc1':2,'dc2':2};
  
 --------------########Creation d'une table#################--------------
-CREATE TABLE Covid19.countries (
+CREATE TABLE covid19.countries (
 idcountry INT, country TEXT, date DATE,  longitude DOUBLE,  latitude DOUBLE, confirmed INT, deaths INT, recovred INT,  active INT,
-primary key (idCountry )
+primary key (idcountry)
 );
 
 --------------########Creation d'un index#################--------------
-CREATE INDEX covid_country ON Covid19.countries  (country);
+CREATE INDEX covid_country ON covid19.countries  (country);
 
 --------------########Insertion de données avec SQL#################--------------
 INSERT INTO covid19.countries (idcountry, country, date, longitude, latitude, confirmed, deaths,recovred, active)  
@@ -24,38 +24,38 @@ select * from covid19.countries;
 
 --------------########Insertion de données avec JSON#################--------------
 INSERT INTO covid19.countries JSON '{
-"idcountry" : 1, "country" : "France", "date" : "2020-11-19",
+"idcountry" : 2, "country" : "France", "date" : "2020-11-19",
 "longitude":46.23219, "latitude" : 46.23219, "confirmed" : 2086288, "deaths" : 47227,  "recovred" : 147569, "active" : 1891592}';
 --------------########selection de données#################--------------   
 
-SELECT * FROM Covid19.countries WHERE idcountry = 1;
+SELECT * FROM covid19.countries WHERE idcountry = 1;
 
 --------------########update de données avec TIMESTAMP#################--------------
 
-UPDATE Covid19.Countries  
+UPDATE covid19.countries  
 SET recovred = 147900  WHERE idcountry = 1;
 
 --------------########selection de données  #################--------------
-SELECT * FROM Covid19.countries WHERE idcountry = 1;
+SELECT * FROM covid19.countries WHERE idcountry = 1;
 
 --------------########Récupérer la date de modification :#################--------------
 
 SELECT writetime(country), writetime(confirmed), writetime(recovred)
-FROM Covid19.Countries  WHERE   idcountry = 1;
+FROM covid19.countries  WHERE   idcountry = 1;
 
 --------------######## Selection de données #################--------------
-SELECT * FROM Covid19.countries WHERE idcountry = 1;
+SELECT * FROM covid19.countries WHERE idcountry = 1;
 
 --------------########  supprimer une valeur définie un instant T #################--------------
-DELETE country FROM Covid19.Countries USING TIMESTAMP 1605818828690000
+DELETE country FROM covid19.countries USING TIMESTAMP 1605818828690000
 WHERE idcountry = 1;
 
 --------------########gérer des données volatiles : TTL #################--------------
 
-UPDATE Covid19.Countries USING TTL 3600
+UPDATE covid19.countries USING TTL 3600
 SET recovred=147900 WHERE idcountry = 1;
 
 --------------######## Selection de données #################--------------
-SELECT * FROM Covid19.countries WHERE idcountry = 1;
+SELECT * FROM covid19.countries WHERE idcountry = 1;
 
 

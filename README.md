@@ -88,7 +88,7 @@ docker compose logs -f cql-gui
 
 Ouvrir un navigateur :
 
-```
+```text
 http://localhost:8889
 ```
 
@@ -107,8 +107,8 @@ http://localhost:8889
 | Password | (vide) |
 | Keyspace | (optionnel) |
 
-3. **Test Connection**
-4. **Save**
+1. **Test Connection**
+1. **Save**
 
 ---
 
@@ -135,6 +135,7 @@ SELECT * FROM users;
 ```
 
 ---
+
 ## 📝 Gestion des scripts CQL
 
 L'interface web permet de sauvegarder et charger des scripts CQL :
@@ -145,6 +146,7 @@ L'interface web permet de sauvegarder et charger des scripts CQL :
 - **Persistance** : Les scripts sont conservés même après redémarrage des conteneurs
 
 ---
+
 ## 🛑 Arrêt de l’environnement
 
 ```bash
@@ -166,6 +168,116 @@ docker compose down -v
 - Les résultats des SELECT sont affichés dans des tableaux HTML
 - Navigation possible dans les keyspaces et tables via l'interface
 - **Gestion des scripts** : Sauvegarde et chargement de scripts CQL dans le dossier monté
+
+---
+
+## 🏢 Déployer un vrai cluster Cassandra multi‑datacenter (2 DC)
+
+Cette section décrit un déploiement **réel** (VM/serveurs) avec **2 datacenters** (ex: `dc1`, `dc2`).
+
+Différence importante :
+
+- **Docker Compose (TP)** : multi‑DC “logique” (même réseau Docker, même machine) pour apprendre la réplication/consistency.
+- **Multi‑DC réel** : latence WAN, firewall, routing, contraintes d’exploitation (monitoring, backups, repairs).
+![alt text](image.png)
+### ✅ Prérequis
+
+- 2 sites (ou 2 sous‑réseaux) : `dc1` et `dc2`
+- Au moins **2 nœuds par DC** recommandé (ex: 2+2)
+- Horloge synchronisée (**NTP/chrony**) sur toutes les machines
+- DNS ou résolution stable des hostnames/IP
+
+### 🔥 Ports réseau à ouvrir (entre nœuds Cassandra)
+
+- `7000/tcp` (intra‑cluster)
+- `7001/tcp` (intra‑cluster TLS si activé)
+- `9042/tcp` (CQL)
+- `7199/tcp` (JMX / nodetool)
+
+### ⚙️ Configuration par nœud (snitch + DC/Rack)
+
+1. Dans `cassandra.yaml` :
+
+```yaml
+endpoint_snitch: GossipingPropertyFileSnitch
+```
+
+1. Dans `cassandra-rackdc.properties` (un fichier par nœud) :
+
+```properties
+dc=dc1
+rack=rack1
+```
+
+1. Toujours dans `cassandra.yaml`, vérifier/adapters selon ton réseau :
+
+- `cluster_name` identique partout
+- `listen_address` / `rpc_address`
+- `broadcast_address` / `broadcast_rpc_address` (surtout en multi‑réseaux)
+
+### 🌱 Seeds (recommandation multi‑DC)
+
+- Définir **1–2 seeds par DC** (stables)
+- Tous les nœuds doivent référencer la même liste de seeds
+
+Exemple :
+
+```yaml
+seed_provider:
+  - class_name: org.apache.cassandra.locator.SimpleSeedProvider
+    parameters:
+      - seeds: "10.10.0.11,10.20.0.11"
+```
+
+### ▶️ Démarrage
+
+- Démarrer d’abord les seeds (un par DC), puis les autres nœuds
+- Vérifier l’état du cluster :
+
+```bash
+nodetool status
+```
+
+Tu dois voir :
+
+- `Datacenter: dc1` avec des nœuds `UN`
+- `Datacenter: dc2` avec des nœuds `UN`
+
+### 🧩 Keyspaces en multi‑DC (NetworkTopologyStrategy)
+
+En multi‑DC, **éviter** `SimpleStrategy`.
+
+Exemple (2 nœuds par DC) :
+
+```sql
+CREATE KEYSPACE IF NOT EXISTS atelier
+WITH replication = {
+  'class': 'NetworkTopologyStrategy',
+  'dc1': 2,
+  'dc2': 2
+};
+```
+
+Exemple complet (CQL) basé sur ce modèle : `cql-scripts/covid.cql.txt`.
+
+Important : les noms `dc1` / `dc2` doivent correspondre **exactement** à ceux du cluster (voir `nodetool status`).
+
+### 🎛️ Consistency (bonnes pratiques)
+
+- Lecture/écriture dans un DC : `LOCAL_QUORUM`
+- Lecture rapide “tolérante” : `LOCAL_ONE` (risque de données moins fraîches)
+
+Exemple :
+
+```sql
+CONSISTENCY LOCAL_QUORUM;
+```
+
+### ⚠️ Pièges fréquents
+
+- Ne pas renommer un DC après initialisation : Cassandra bloque si le DC change (il faut rebootstrap/decommission).
+- WAN latency : bien calibrer `read_request_timeout_in_ms`, `write_request_timeout_in_ms`, etc.
+- Multi‑DC réel = penser **repairs** (ex: `nodetool repair` / incremental repairs) et supervision.
 
 ---
 
