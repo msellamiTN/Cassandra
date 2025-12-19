@@ -1,7 +1,7 @@
 # Fleet Tracing IoT - Guide de Mise en Œuvre Complet
 
 ## 📋 Résumé Exécutif
-
+![alt text](image.png)
 Ce projet demande l'implémentation d'une plateforme complète de suivi de flotte avec trois composants majeurs :
 - **Volet 1** : Pipeline ETL (Python) pour l'ingestion et transformation des données
 - **Volet 2** : Cluster Cassandra Multi-Datacenter pour le stockage résilient
@@ -12,7 +12,7 @@ Ce projet demande l'implémentation d'une plateforme complète de suivi de flott
 
 ---
 
-## 🏗️ Phase 1 : Configuration de l'Environnement (1-2 jours)
+## 🏗️ Phase 1 : Configuration de l'Environnement (1-2 H)
 
 ### 1.1 Structure du Projet
 

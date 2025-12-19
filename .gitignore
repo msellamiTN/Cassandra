@@ -1,0 +1,20 @@
+# Ignore files starting with "feet"
+feet*
+
+# Ignore files containing "workshops feet"
+*workshops feet*
+
+# Ignore any file named "workshops feet" with any extension
+workshops feet.*
+
+# Ignore files with "feet" in the name
+*feet*
+
+# Ignore fleet-etl directory
+fleet-etl/
+
+# Ignore fleet-dashboard directory
+fleet-dashboard/
+
+# Ignore workshops directory
+workshops/
