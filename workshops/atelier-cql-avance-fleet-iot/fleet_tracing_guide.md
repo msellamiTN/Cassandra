@@ -651,7 +651,7 @@ docker compose down
 - [ ] Test failover réussi (stop/start nœud)
 - [ ] RAPPORT.pdf complété
 - [ ] README.md avec instructions claires
-
+- [ ] Github project 
 ---
 
  
